@@ -187,8 +187,8 @@ function App() {
     {
       id: 'bearingPointDelete',
       label: 'Bearing Point Delete Filter',
-      helper: 'Default removal set: 1-6 and 14-20 before any remap occurs.',
-      placeholder: '1-6\n14-20',
+      helper: 'Default removal set: 1-7 and 14-20 before any remap occurs.',
+      placeholder: '1-7\n14-20',
       value: bearingPointDeleteText,
       result: deleteResults.bearingPoint,
       countLabel: 'Values',

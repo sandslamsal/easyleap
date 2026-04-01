@@ -416,7 +416,7 @@ export function parseDeleteFilter(text, label) {
         invalidRows.push({
           lineNumber: index + 1,
           rawLine: rawLine.trim(),
-          error: `${label} entries must be integers or ranges such as 1-6.`,
+          error: `${label} entries must be integers or ranges such as 1-7.`,
         })
       })
   })
