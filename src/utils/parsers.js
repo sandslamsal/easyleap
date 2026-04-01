@@ -31,8 +31,20 @@ function normalizeLoadType(loadType) {
 }
 
 function transformColumnValues(loadType, values) {
-  if (loadType === 'UDL' && values.length >= 3) {
+  if (loadType === 'UDL' && values.length >= 4) {
     return values.filter((_, index) => index !== 2)
+  }
+
+  return values
+}
+
+function transformCapValues(loadType, values) {
+  if (loadType === 'Force' && values.length >= 5) {
+    return values.slice(0, 3)
+  }
+
+  if (loadType === 'UDL' && values.length >= 5) {
+    return values.filter((_, index) => index !== 0 && index !== 3)
   }
 
   return values
@@ -313,7 +325,7 @@ function parseCapRow(tokens) {
 
   const loadType = normalizeLoadType(tokens.slice(0, directionIndex).join(' '))
   const direction = tokens[directionIndex]
-  const values = tokens.slice(directionIndex + 1)
+  const values = transformCapValues(loadType, tokens.slice(directionIndex + 1))
 
   if (!loadType) {
     return { error: 'Cap load type is missing.' }
