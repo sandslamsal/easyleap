@@ -75,6 +75,7 @@ function App() {
   const [fileName, setFileName] = useState('leap-loads')
   const [description, setDescription] = useState('')
   const [bearingText, setBearingText] = useState('')
+  const [bearingLiveLoads, setBearingLiveLoads] = useState(false)
   const [columnText, setColumnText] = useState('')
   const [capText, setCapText] = useState('')
   const [activeTab, setActiveTab] = useState('bearing')
@@ -128,6 +129,7 @@ function App() {
     bearing: parseBearingLoads(bearingText, {
       bearingPointMap: activeMaps.bearingPointMap,
       bearingPointDeleteSet: activeMaps.bearingPointDeleteSet,
+      liveLoadsEnabled: bearingLiveLoads,
     }),
     column: parseColumnLoads(columnText, {
       columnNumberMap: activeMaps.columnNumberMap,
@@ -231,7 +233,7 @@ function App() {
 
   const handlePasteSample = (sectionId) => {
     if (sectionId === 'bearing') {
-      setBearingText(SAMPLE_DATA.bearing)
+      setBearingText(bearingLiveLoads ? SAMPLE_DATA.bearingLive : SAMPLE_DATA.bearing)
     }
 
     if (sectionId === 'column') {
@@ -320,11 +322,16 @@ function App() {
       }
     })
 
-    const combinedWarnings = [...transformWarnings, ...buildResult.warnings]
+    const combinedWarnings = [
+      ...buildResult.sectionErrors,
+      ...transformWarnings,
+      ...buildResult.warnings,
+    ]
     const totalIssueCount =
       buildResult.totalInvalidRows +
       remapTotals.invalidRules +
-      deleteTotals.invalidRules
+      deleteTotals.invalidRules +
+      buildResult.totalSectionErrors
 
     startTransition(() => {
       setGeneratedOutput(buildResult.output)
@@ -340,6 +347,7 @@ function App() {
           kind: 'error',
           title: 'Errors Found',
           message:
+            buildResult.sectionErrors[0] ??
             'No valid rows are available to export yet. Fix the highlighted rows or paste data into at least one section.',
         })
         return
@@ -358,6 +366,10 @@ function App() {
 
         if (deleteTotals.invalidRules > 0) {
           issueParts.push(`${deleteTotals.invalidRules} invalid delete entry(ies) were ignored`)
+        }
+
+        if (buildResult.totalSectionErrors > 0) {
+          issueParts.push(buildResult.sectionErrors.join(' '))
         }
 
         setStatus({
@@ -389,6 +401,7 @@ function App() {
     setFileName('leap-loads')
     setDescription('')
     setBearingText('')
+    setBearingLiveLoads(false)
     setColumnText('')
     setCapText('')
     setApplyRemaps(true)
@@ -444,18 +457,38 @@ function App() {
       value: bearingText,
       placeholder: PLACEHOLDERS.bearing,
       result: liveResults.bearing,
+      sectionNote: bearingLiveLoads
+        ? 'When enabled, the first half of bearing rows will be tagged as Truck (T) and the second half as Lane (L). Active bearing-point delete filters are still applied before tagging.'
+        : null,
+      controlsContent: (
+        <label className="section-toggle">
+          <input
+            type="checkbox"
+            checked={bearingLiveLoads}
+            onChange={(event) => {
+              setBearingLiveLoads(event.target.checked)
+              invalidateGeneratedOutput()
+            }}
+          />
+          <span>Live Loads</span>
+        </label>
+      ),
     },
     {
       ...SECTION_META.column,
       value: columnText,
       placeholder: PLACEHOLDERS.column,
       result: liveResults.column,
+      sectionNote: null,
+      controlsContent: null,
     },
     {
       ...SECTION_META.cap,
       value: capText,
       placeholder: PLACEHOLDERS.cap,
       result: liveResults.cap,
+      sectionNote: null,
+      controlsContent: null,
     },
   ]
 
@@ -594,6 +627,8 @@ function App() {
             onChange={(nextValue) => handleSectionChange(activeSection.id, nextValue)}
             onPasteSample={() => handlePasteSample(activeSection.id)}
             icon={activeSection.icon}
+            controlsContent={activeSection.controlsContent}
+            sectionNote={activeSection.sectionNote}
           />
         )}
       </section>

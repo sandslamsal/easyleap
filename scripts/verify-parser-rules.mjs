@@ -57,6 +57,68 @@ assert.deepEqual(
   'Cap rows should also drop an extra 8th input column.',
 )
 
+const liveBearingText = [
+  '1, 1, Y, 0',
+  '1, 2, Y, -6.912',
+  '1, 3, Y, -23.808',
+  '2, 1, Y, 0',
+  '2, 2, Y, -10.296',
+  '2, 3, Y, -35.464',
+  '1, 1, Y, 0',
+  '1, 2, Y, -5.184',
+  '1, 3, Y, -17.856',
+  '2, 1, Y, 0',
+  '2, 2, Y, -5.184',
+  '2, 3, Y, -17.856',
+].join('\n')
+
+const liveBearingRows = parseBearingLoads(liveBearingText, {
+  liveLoadsEnabled: true,
+}).validRows.map((row) => row.normalized)
+
+assert.deepEqual(
+  liveBearingRows,
+  [
+    '1, 1, Y, 0, T',
+    '1, 2, Y, -6.912, T',
+    '1, 3, Y, -23.808, T',
+    '2, 1, Y, 0, T',
+    '2, 2, Y, -10.296, T',
+    '2, 3, Y, -35.464, T',
+    '1, 1, Y, 0, L',
+    '1, 2, Y, -5.184, L',
+    '1, 3, Y, -17.856, L',
+    '2, 1, Y, 0, L',
+    '2, 2, Y, -5.184, L',
+    '2, 3, Y, -17.856, L',
+  ],
+  'Live bearing rows should be split into Truck and Lane halves.',
+)
+
+const oddLiveBearingResult = parseBearingLoads(
+  ['1, 1, Y, 0', '1, 2, Y, -6.912', '1, 3, Y, -23.808'].join('\n'),
+  { liveLoadsEnabled: true },
+)
+
+assert.equal(
+  oddLiveBearingResult.sectionErrors[0],
+  'Live Loads requires an even number of bearing rows because the rows are split into Truck and Lane halves.',
+  'Odd live-load bearing rows should raise a section error.',
+)
+
+const manualTagOverrideResult = parseBearingLoads(
+  ['1, 1, Y, 0, L', '1, 2, Y, -6.912, L', '1, 1, Y, 0, T', '1, 2, Y, -5.184, T'].join(
+    '\n',
+  ),
+  { liveLoadsEnabled: true },
+)
+
+assert.deepEqual(
+  manualTagOverrideResult.validRows.map((row) => row.normalized),
+  ['1, 1, Y, 0, T', '1, 2, Y, -6.912, T', '1, 1, Y, 0, L', '1, 2, Y, -5.184, L'],
+  'Live load auto-tagging should override manually pasted bearing tags.',
+)
+
 const ws9Sections = ws9Text.split(/\n\n+/)
 const getRows = (section) => section.split('\n').slice(1).join('\n')
 const rebuiltWs9 = buildLeapTxt({

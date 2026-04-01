@@ -24,6 +24,7 @@ const isIntegerToken = (token) => INTEGER_PATTERN.test(token)
 const isNumericToken = (token) => NUMBER_PATTERN.test(token)
 const isDirectionToken = (token) => DIRECTION_PATTERN.test(token)
 const toUpperDirection = (token) => token.toUpperCase()
+const formatFields = (fields) => fields.join(', ')
 
 function normalizeLoadType(loadType) {
   const normalized = loadType.replace(/\s+/g, ' ').trim()
@@ -157,7 +158,7 @@ function parseRows(text, rowParser) {
     validRows.push({
       lineNumber: index + 1,
       rawLine: rawLine.trim(),
-      normalized: parsedRow.normalized,
+      ...parsedRow,
     })
   })
 
@@ -166,6 +167,8 @@ function parseRows(text, rowParser) {
     validRows,
     invalidRows,
     filteredRows,
+    sectionErrors: [],
+    sectionWarnings: [],
   }
 }
 
@@ -225,7 +228,8 @@ function parseBearingRow(tokens, options = {}) {
   }
 
   return {
-    normalized: normalizedTokens.join(', '),
+    fields: normalizedTokens,
+    normalized: formatFields(normalizedTokens),
   }
 }
 
@@ -321,9 +325,13 @@ function parseColumnRow(tokens, options = {}) {
   }
 
   return {
-    normalized: [columnNumber, loadType, toUpperDirection(direction), ...values].join(
-      ', ',
-    ),
+    fields: [columnNumber, loadType, toUpperDirection(direction), ...values],
+    normalized: formatFields([
+      columnNumber,
+      loadType,
+      toUpperDirection(direction),
+      ...values,
+    ]),
   }
 }
 
@@ -359,7 +367,8 @@ function parseCapRow(tokens) {
   }
 
   return {
-    normalized: [loadType, toUpperDirection(direction), ...values].join(', '),
+    fields: [loadType, toUpperDirection(direction), ...values],
+    normalized: formatFields([loadType, toUpperDirection(direction), ...values]),
   }
 }
 
@@ -473,7 +482,51 @@ export function parseDeleteFilter(text, label) {
 }
 
 export function parseBearingLoads(text, options = {}) {
-  return parseRows(text, (tokens) => parseBearingRow(tokens, options))
+  const result = parseRows(text, (tokens) => parseBearingRow(tokens, options))
+
+  if (!options.liveLoadsEnabled) {
+    return result
+  }
+
+  if (result.validRows.length === 0) {
+    return result
+  }
+
+  if (result.validRows.length % 2 !== 0) {
+    return {
+      ...result,
+      sectionErrors: [
+        'Live Loads requires an even number of bearing rows because the rows are split into Truck and Lane halves.',
+      ],
+    }
+  }
+
+  const manualTagCount = result.validRows.filter((row) => row.fields.length >= 5).length
+  const halfRowCount = result.validRows.length / 2
+
+  // When Live Loads is enabled, any pasted manual tags are overridden so the
+  // first half is always Truck (T) and the second half is always Lane (L).
+  const validRows = result.validRows.map((row, index) => {
+    const tag = index < halfRowCount ? 'T' : 'L'
+    const fields = [...row.fields.slice(0, 4), tag]
+
+    return {
+      ...row,
+      fields,
+      normalized: formatFields(fields),
+    }
+  })
+
+  return {
+    ...result,
+    validRows,
+    sectionWarnings:
+      manualTagCount > 0
+        ? [
+            'Live Loads is enabled, so any manually pasted bearing tags were overridden with auto-generated Truck (T) and Lane (L) tags.',
+          ]
+        : result.sectionWarnings,
+  }
 }
 
 export function parseColumnLoads(text, options = {}) {
@@ -493,6 +546,8 @@ export function buildLeapTxt(results) {
       sourceRowCount: results.bearing.sourceRowCount,
       invalidCount: results.bearing.invalidRows.length,
       filteredCount: results.bearing.filteredRows.length,
+      sectionErrors: results.bearing.sectionErrors ?? [],
+      sectionWarnings: results.bearing.sectionWarnings ?? [],
     },
     {
       label: 'Column Loads',
@@ -501,6 +556,8 @@ export function buildLeapTxt(results) {
       sourceRowCount: results.column.sourceRowCount,
       invalidCount: results.column.invalidRows.length,
       filteredCount: results.column.filteredRows.length,
+      sectionErrors: results.column.sectionErrors ?? [],
+      sectionWarnings: results.column.sectionWarnings ?? [],
     },
     {
       label: 'Cap Loads',
@@ -509,13 +566,30 @@ export function buildLeapTxt(results) {
       sourceRowCount: results.cap.sourceRowCount,
       invalidCount: results.cap.invalidRows.length,
       filteredCount: results.cap.filteredRows.length,
+      sectionErrors: results.cap.sectionErrors ?? [],
+      sectionWarnings: results.cap.sectionWarnings ?? [],
     },
   ]
 
-  const includedSections = sections.filter((section) => section.rows.length > 0)
+  const includedSections = sections.filter(
+    (section) => section.rows.length > 0 && section.sectionErrors.length === 0,
+  )
   const warnings = []
+  const sectionErrors = []
 
   sections.forEach((section) => {
+    section.sectionWarnings.forEach((warning) => {
+      warnings.push(`${section.label}: ${warning}`)
+    })
+
+    section.sectionErrors.forEach((error) => {
+      sectionErrors.push(`${section.label}: ${error}`)
+    })
+
+    if (section.sectionErrors.length > 0) {
+      return
+    }
+
     if (section.sourceRowCount === 0) {
       warnings.push(`${section.label} is empty and was omitted from the export.`)
       return
@@ -546,14 +620,22 @@ export function buildLeapTxt(results) {
       .map((section) => [section.heading, ...section.rows].join('\n'))
       .join('\n\n'),
     warnings,
+    sectionErrors,
     includedSectionCount: includedSections.length,
-    totalValidRows: sections.reduce((sum, section) => sum + section.rows.length, 0),
+    totalValidRows: includedSections.reduce(
+      (sum, section) => sum + section.rows.length,
+      0,
+    ),
     totalInvalidRows: sections.reduce(
       (sum, section) => sum + section.invalidCount,
       0,
     ),
     totalFilteredRows: sections.reduce(
       (sum, section) => sum + section.filteredCount,
+      0,
+    ),
+    totalSectionErrors: sections.reduce(
+      (sum, section) => sum + section.sectionErrors.length,
       0,
     ),
   }

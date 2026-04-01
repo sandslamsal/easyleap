@@ -3,6 +3,18 @@ export const SAMPLE_DATA = {
 1, 12, Z, -0.0284
 2\t8\tY\t-17.856\tL
 2, 3, X, -4.000`,
+  bearingLive: `1, 1, Y, 0
+1, 2, Y, -6.912
+1, 3, Y, -23.808
+2, 1, Y, 0
+2, 2, Y, -10.296
+2, 3, Y, -35.464
+1, 1, Y, 0
+1, 2, Y, -5.184
+1, 3, Y, -17.856
+2, 1, Y, 0
+2, 2, Y, -5.184
+2, 3, Y, -17.856`,
   column: `Col 13, force, x, 1.1, 1.0
 Column 8\tudl\tz\t3.0\t0\t1.0
 Col 2, pressure, y, -5.25, 0.0, 0.75
@@ -18,7 +30,12 @@ export const PLACEHOLDERS = {
 Examples:
 1 13 X -0.097
 1, 12, Z, -0.0284
-2\t8\tY\t-17.856\tT`,
+2\t8\tY\t-17.856\tT
+
+Live-load example:
+1, 1, Y, 0
+...
+2, 3, Y, -17.856`,
   column: `Paste column load rows here.
 
 Examples:
