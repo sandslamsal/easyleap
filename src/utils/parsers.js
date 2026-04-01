@@ -1,5 +1,18 @@
+const INTEGER_PATTERN = /^[-+]?\d+$/
 const NUMBER_PATTERN = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/
 const DIRECTION_PATTERN = /^[XYZ]$/i
+const LIVE_LOAD_TAG_PATTERN = /^[TL]$/i
+
+const LOAD_TYPE_CASE_MAP = new Map([
+  ['force', 'Force'],
+  ['udl', 'UDL'],
+  ['pressure', 'Pressure'],
+  ['settlement', 'Settlement'],
+  ['moment', 'Moment'],
+  ['trapezoid', 'Trapezoid'],
+  ['trapezoidal', 'Trapezoidal'],
+  ['unit strain', 'Unit Strain'],
+])
 
 const cleanToken = (token) =>
   token
@@ -7,8 +20,24 @@ const cleanToken = (token) =>
     .replace(/[|]+/g, ' ')
     .trim()
 
+const isIntegerToken = (token) => INTEGER_PATTERN.test(token)
 const isNumericToken = (token) => NUMBER_PATTERN.test(token)
 const isDirectionToken = (token) => DIRECTION_PATTERN.test(token)
+
+const toUpperDirection = (token) => token.toUpperCase()
+
+function normalizeLoadType(loadType) {
+  const normalized = loadType.replace(/\s+/g, ' ').trim()
+  return LOAD_TYPE_CASE_MAP.get(normalized.toLowerCase()) ?? normalized
+}
+
+function applyIntegerRemap(token, remapMap) {
+  if (!remapMap || remapMap.size === 0) {
+    return token
+  }
+
+  return remapMap.get(token) ?? token
+}
 
 function tokenizeRow(rawLine) {
   const line = cleanToken(rawLine)
@@ -84,7 +113,7 @@ function parseRows(text, rowParser) {
   }
 }
 
-function parseBearingRow(tokens) {
+function parseBearingRow(tokens, options = {}) {
   if (tokens.length < 4) {
     return {
       error:
@@ -98,14 +127,14 @@ function parseBearingRow(tokens) {
     }
   }
 
-  const [bearingLine, bearingPoint, direction, loadValue, tag] = tokens
+  const [rawBearingLine, rawBearingPoint, direction, loadValue, tag] = tokens
 
-  if (!isNumericToken(bearingLine)) {
-    return { error: 'Bearing line must be numeric.' }
+  if (!isIntegerToken(rawBearingLine)) {
+    return { error: 'Bearing line must be an integer.' }
   }
 
-  if (!isNumericToken(bearingPoint)) {
-    return { error: 'Bearing point number must be numeric.' }
+  if (!isIntegerToken(rawBearingPoint)) {
+    return { error: 'Bearing point number must be an integer.' }
   }
 
   if (!isDirectionToken(direction)) {
@@ -116,10 +145,17 @@ function parseBearingRow(tokens) {
     return { error: 'Bearing load value must be numeric.' }
   }
 
+  if (tag && !LIVE_LOAD_TAG_PATTERN.test(tag)) {
+    return { error: 'Bearing tag must be T or L when provided.' }
+  }
+
+  const bearingLine = applyIntegerRemap(rawBearingLine, options.bearingLineMap)
+  const bearingPoint = applyIntegerRemap(rawBearingPoint, options.bearingPointMap)
+
   const normalizedTokens = [
     bearingLine,
     bearingPoint,
-    direction.toUpperCase(),
+    toUpperDirection(direction),
     loadValue,
   ]
 
@@ -132,7 +168,7 @@ function parseBearingRow(tokens) {
   }
 }
 
-function parseColumnRow(tokens) {
+function parseColumnRow(tokens, options = {}) {
   if (tokens.length < 4) {
     return {
       error:
@@ -140,22 +176,23 @@ function parseColumnRow(tokens) {
     }
   }
 
-  const [columnNumber] = tokens
+  const [rawColumnNumber] = tokens
   const directionIndex = tokens.findIndex(
     (token, index) => index >= 2 && isDirectionToken(token),
   )
 
-  if (!isNumericToken(columnNumber)) {
-    return { error: 'Column number must be numeric.' }
+  if (!isIntegerToken(rawColumnNumber)) {
+    return { error: 'Column number must be an integer.' }
   }
 
   if (directionIndex === -1) {
     return { error: 'Column row must include an X, Y, or Z direction value.' }
   }
 
-  const loadType = tokens.slice(1, directionIndex).join(' ').trim()
+  const loadType = normalizeLoadType(tokens.slice(1, directionIndex).join(' '))
   const direction = tokens[directionIndex]
   const values = tokens.slice(directionIndex + 1)
+  const columnNumber = applyIntegerRemap(rawColumnNumber, options.columnNumberMap)
 
   if (!loadType) {
     return { error: 'Column load type is missing.' }
@@ -170,7 +207,7 @@ function parseColumnRow(tokens) {
   }
 
   return {
-    normalized: [columnNumber, loadType, direction.toUpperCase(), ...values].join(
+    normalized: [columnNumber, loadType, toUpperDirection(direction), ...values].join(
       ', ',
     ),
   }
@@ -191,7 +228,7 @@ function parseCapRow(tokens) {
     return { error: 'Cap row must include an X, Y, or Z direction value.' }
   }
 
-  const loadType = tokens.slice(0, directionIndex).join(' ').trim()
+  const loadType = normalizeLoadType(tokens.slice(0, directionIndex).join(' '))
   const direction = tokens[directionIndex]
   const values = tokens.slice(directionIndex + 1)
 
@@ -208,16 +245,59 @@ function parseCapRow(tokens) {
   }
 
   return {
-    normalized: [loadType, direction.toUpperCase(), ...values].join(', '),
+    normalized: [loadType, toUpperDirection(direction), ...values].join(', '),
   }
 }
 
-export function parseBearingLoads(text) {
-  return parseRows(text, parseBearingRow)
+export function parseIdRemap(text, label) {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  const validRows = []
+  const invalidRows = []
+  const map = new Map()
+  let sourceRowCount = 0
+
+  lines.forEach((rawLine, index) => {
+    if (!rawLine.trim()) {
+      return
+    }
+
+    sourceRowCount += 1
+    const matches = rawLine.match(/-?\d+/g) ?? []
+
+    if (matches.length !== 2) {
+      invalidRows.push({
+        lineNumber: index + 1,
+        rawLine: rawLine.trim(),
+        error: `${label} rules must contain exactly one source integer and one target integer.`,
+      })
+      return
+    }
+
+    const [from, to] = matches
+
+    map.set(from, to)
+    validRows.push({
+      lineNumber: index + 1,
+      rawLine: rawLine.trim(),
+      from,
+      to,
+    })
+  })
+
+  return {
+    sourceRowCount,
+    validRows,
+    invalidRows,
+    map,
+  }
 }
 
-export function parseColumnLoads(text) {
-  return parseRows(text, parseColumnRow)
+export function parseBearingLoads(text, options = {}) {
+  return parseRows(text, (tokens) => parseBearingRow(tokens, options))
+}
+
+export function parseColumnLoads(text, options = {}) {
+  return parseRows(text, (tokens) => parseColumnRow(tokens, options))
 }
 
 export function parseCapLoads(text) {

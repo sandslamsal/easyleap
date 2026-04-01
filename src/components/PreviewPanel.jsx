@@ -48,7 +48,7 @@ export function PreviewPanel({
         <div className="feedback-panel feedback-panel-warning">
           <div className="feedback-header">
             <AlertTriangle size={16} />
-            <span>Warnings</span>
+            <span>Notes / Warnings</span>
           </div>
           <div className="warning-list">
             {warnings.map((warning) => (
