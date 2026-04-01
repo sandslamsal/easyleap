@@ -49,7 +49,9 @@ const EMPTY_DELETE_SET = new Set()
 const DEFAULT_TRANSFORM_SETTINGS = createTransformSettingsFromPreset(
   DEFAULT_BRIDGE_PRESET_ID,
 )
-const BRIDGE_PRESET_OPTIONS = Object.values(BRIDGE_PRESETS)
+const BRIDGE_PRESET_OPTIONS = ['bridge4', 'bridge6', 'create'].map(
+  (presetId) => BRIDGE_PRESETS[presetId],
+)
 
 const SECTION_META = {
   bearing: {
@@ -651,9 +653,10 @@ function App() {
       </section>
 
       <RemapSettings
-        title={`${activeBridgePreset.label} Setting`}
+        title="Bridge Setting"
         presetId={bridgePresetId}
         presetOptions={BRIDGE_PRESET_OPTIONS}
+        presetLabel="Bridge"
         remapEnabled={applyRemaps}
         deleteEnabled={applyDeleteFilters}
         onPresetChange={handlePresetChange}

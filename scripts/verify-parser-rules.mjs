@@ -7,6 +7,7 @@ import {
   parseCapLoads,
   parseColumnLoads,
   parseDeleteFilter,
+  parseIdRemap,
 } from '../src/utils/parsers.js'
 import {
   createClearedTransformSettings,
@@ -154,11 +155,18 @@ assert.deepEqual(
 
 const bridge6Settings = createTransformSettingsFromPreset('bridge6')
 const bridge4Settings = createTransformSettingsFromPreset('bridge4')
+const createSettings = createTransformSettingsFromPreset('create')
 
 assert.equal(
   bridge6Settings.bearingPointDeleteText,
   '1-7, 14-20',
   'Bridge 6 should keep the existing delete defaults.',
+)
+
+assert.equal(
+  bridge6Settings.bearingPointRemapText,
+  ['13 = 6', '12 = 5', '11 = 4', '10 = 3', '9 = 2', '8 = 1'].join('\n'),
+  'Bridge 6 should keep the existing remap defaults.',
 )
 
 assert.equal(
@@ -173,26 +181,106 @@ assert.equal(
   'Bridge 4 should default column delete settings to 1-7.',
 )
 
+assert.equal(
+  bridge4Settings.bearingPointRemapText,
+  ['10 = 3', '9 = 2', '8 = 1'].join('\n'),
+  'Bridge 4 should use the shorter bearing remap preset.',
+)
+
+assert.equal(
+  bridge4Settings.columnNumberRemapText,
+  ['10 = 3', '9 = 2', '8 = 1'].join('\n'),
+  'Bridge 4 should use the shorter column remap preset.',
+)
+
+assert.deepEqual(
+  createSettings,
+  {
+    bridgePresetId: 'create',
+    applyRemaps: true,
+    applyDeleteFilters: true,
+    bearingPointRemapText: '',
+    columnNumberRemapText: '',
+    bearingPointDeleteText: '',
+    columnNumberDeleteText: '',
+  },
+  'Create mode should start as a blank custom settings preset.',
+)
+
+const bridge4BearingResult = parseBearingLoads(
+  ['1 10 X -1.0', '1 7 X -2.0'].join('\n'),
+  {
+    bearingPointMap: parseIdRemap(
+      bridge4Settings.bearingPointRemapText,
+      'Bridge 4 bearing point remap',
+    ).map,
+    bearingPointDeleteSet: parseDeleteFilter(
+      bridge4Settings.bearingPointDeleteText,
+      'Bridge 4 bearing point delete filter',
+    ).values,
+  },
+)
+
+assert.deepEqual(
+  bridge4BearingResult.validRows.map((row) => row.normalized),
+  ['1, 3, X, -1.0'],
+  'Bridge 4 preset should renumber bearing point 10 to 3.',
+)
+
+assert.equal(
+  bridge4BearingResult.filteredRows.length,
+  1,
+  'Bridge 4 preset should delete bearing point 7.',
+)
+
+const bridge6ColumnResult = parseColumnLoads(
+  ['Col 13 Force X 1.0', 'Col 15 Force X 2.0'].join('\n'),
+  {
+    columnNumberMap: parseIdRemap(
+      bridge6Settings.columnNumberRemapText,
+      'Bridge 6 column number remap',
+    ).map,
+    columnNumberDeleteSet: parseDeleteFilter(
+      bridge6Settings.columnNumberDeleteText,
+      'Bridge 6 column number delete filter',
+    ).values,
+  },
+)
+
+assert.deepEqual(
+  bridge6ColumnResult.validRows.map((row) => row.normalized),
+  ['6, Force, X, 1.0'],
+  'Bridge 6 preset should keep the existing column renumbering behavior.',
+)
+
+assert.equal(
+  bridge6ColumnResult.filteredRows.length,
+  1,
+  'Bridge 6 preset should keep the existing column delete behavior.',
+)
+
 const settingsRoundTrip = parseTransformSettingsJson(
   serializeTransformSettings({
-    ...bridge6Settings,
-    applyDeleteFilters: false,
-    columnNumberDeleteText: '4-9,12,15-18',
+    ...createSettings,
+    bearingPointRemapText: '16 = 4',
+    columnNumberRemapText: '16 = 4',
+    bearingPointDeleteText: '2,4-6',
+    columnNumberDeleteText: '3,7-8',
   }),
 )
 
 assert.deepEqual(
   settingsRoundTrip,
   {
-    bridgePresetId: 'bridge6',
+    bridgePresetId: 'create',
     applyRemaps: true,
-    applyDeleteFilters: false,
-    bearingPointRemapText: bridge6Settings.bearingPointRemapText,
-    columnNumberRemapText: bridge6Settings.columnNumberRemapText,
-    bearingPointDeleteText: bridge6Settings.bearingPointDeleteText,
-    columnNumberDeleteText: '4-9,12,15-18',
+    applyDeleteFilters: true,
+    bearingPointRemapText: '16 = 4',
+    columnNumberRemapText: '16 = 4',
+    bearingPointDeleteText: '2,4-6',
+    columnNumberDeleteText: '3,7-8',
   },
-  'Settings JSON export/import should round-trip current transform state.',
+  'Settings JSON export/import should preserve the selected bridge mode and values.',
 )
 
 assert.deepEqual(

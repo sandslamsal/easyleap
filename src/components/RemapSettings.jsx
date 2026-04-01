@@ -102,6 +102,7 @@ export function RemapSettings({
   title,
   presetId,
   presetOptions,
+  presetLabel,
   remapEnabled,
   deleteEnabled,
   onPresetChange,
@@ -128,7 +129,7 @@ export function RemapSettings({
       <div className="accordion-body">
         <div className="remap-toolbar remap-toolbar-top">
           <label className="remap-select-field">
-            <span>Bridge Preset</span>
+            <span>{presetLabel}</span>
             <select
               className="remap-select"
               value={presetId}

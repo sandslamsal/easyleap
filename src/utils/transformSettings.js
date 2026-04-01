@@ -32,8 +32,8 @@ export function createTransformSettingsFromPreset(
 
   return {
     bridgePresetId: preset.id,
-    applyRemaps: true,
-    applyDeleteFilters: true,
+    applyRemaps: preset.applyRemaps,
+    applyDeleteFilters: preset.applyDeleteFilters,
     bearingPointRemapText: preset.remaps.bearingPoint,
     columnNumberRemapText: preset.remaps.columnNumber,
     bearingPointDeleteText: preset.deletes.bearingPoint,
