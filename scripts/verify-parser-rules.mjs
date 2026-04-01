@@ -6,7 +6,14 @@ import {
   parseBearingLoads,
   parseCapLoads,
   parseColumnLoads,
+  parseDeleteFilter,
 } from '../src/utils/parsers.js'
+import {
+  createClearedTransformSettings,
+  createTransformSettingsFromPreset,
+  parseTransformSettingsJson,
+  serializeTransformSettings,
+} from '../src/utils/transformSettings.js'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const ws9Path = path.join(repoRoot, 'tests', 'fixtures', 'WS9.txt')
@@ -117,6 +124,89 @@ assert.deepEqual(
   manualTagOverrideResult.validRows.map((row) => row.normalized),
   ['1, 1, Y, 0, T', '1, 2, Y, -6.912, T', '1, 1, Y, 0, L', '1, 2, Y, -5.184, L'],
   'Live load auto-tagging should override manually pasted bearing tags.',
+)
+
+const compactDeleteValues = parseDeleteFilter(
+  '1,2,3,6-8\n4-9,12,15-18',
+  'Delete filter',
+)
+
+assert.deepEqual(
+  [...compactDeleteValues.values],
+  [
+    '1',
+    '2',
+    '3',
+    '6',
+    '7',
+    '8',
+    '4',
+    '5',
+    '9',
+    '12',
+    '15',
+    '16',
+    '17',
+    '18',
+  ],
+  'Delete filters should parse compact comma-separated integers and ranges.',
+)
+
+const bridge6Settings = createTransformSettingsFromPreset('bridge6')
+const bridge4Settings = createTransformSettingsFromPreset('bridge4')
+
+assert.equal(
+  bridge6Settings.bearingPointDeleteText,
+  '1-7, 14-20',
+  'Bridge 6 should keep the existing delete defaults.',
+)
+
+assert.equal(
+  bridge4Settings.bearingPointDeleteText,
+  '1-7',
+  'Bridge 4 should default bearing delete settings to 1-7.',
+)
+
+assert.equal(
+  bridge4Settings.columnNumberDeleteText,
+  '1-7',
+  'Bridge 4 should default column delete settings to 1-7.',
+)
+
+const settingsRoundTrip = parseTransformSettingsJson(
+  serializeTransformSettings({
+    ...bridge6Settings,
+    applyDeleteFilters: false,
+    columnNumberDeleteText: '4-9,12,15-18',
+  }),
+)
+
+assert.deepEqual(
+  settingsRoundTrip,
+  {
+    bridgePresetId: 'bridge6',
+    applyRemaps: true,
+    applyDeleteFilters: false,
+    bearingPointRemapText: bridge6Settings.bearingPointRemapText,
+    columnNumberRemapText: bridge6Settings.columnNumberRemapText,
+    bearingPointDeleteText: bridge6Settings.bearingPointDeleteText,
+    columnNumberDeleteText: '4-9,12,15-18',
+  },
+  'Settings JSON export/import should round-trip current transform state.',
+)
+
+assert.deepEqual(
+  createClearedTransformSettings('bridge4'),
+  {
+    bridgePresetId: 'bridge4',
+    applyRemaps: false,
+    applyDeleteFilters: false,
+    bearingPointRemapText: '',
+    columnNumberRemapText: '',
+    bearingPointDeleteText: '',
+    columnNumberDeleteText: '',
+  },
+  'Clear settings should blank transform inputs without relying on dataset state.',
 )
 
 const ws9Sections = ws9Text.split(/\n\n+/)

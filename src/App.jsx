@@ -1,4 +1,4 @@
-import { startTransition, useState } from 'react'
+import { startTransition, useRef, useState } from 'react'
 import {
   ClipboardCopy,
   Download,
@@ -15,8 +15,8 @@ import { RemapSettings } from './components/RemapSettings.jsx'
 import { SectionEditor } from './components/SectionEditor.jsx'
 import { StatusBanner } from './components/StatusBanner.jsx'
 import {
-  DEFAULT_DELETE_FILTERS,
-  DEFAULT_REMAPS,
+  BRIDGE_PRESETS,
+  DEFAULT_BRIDGE_PRESET_ID,
   PLACEHOLDERS,
   SAMPLE_DATA,
 } from './data/samples.js'
@@ -29,6 +29,13 @@ import {
   parseDeleteFilter,
   parseIdRemap,
 } from './utils/parsers.js'
+import {
+  createClearedTransformSettings,
+  createTransformSettingsFromPreset,
+  getBridgePreset,
+  parseTransformSettingsJson,
+  serializeTransformSettings,
+} from './utils/transformSettings.js'
 
 const DEFAULT_STATUS = {
   kind: 'ready',
@@ -39,6 +46,10 @@ const DEFAULT_STATUS = {
 
 const EMPTY_REMAP = new Map()
 const EMPTY_DELETE_SET = new Set()
+const DEFAULT_TRANSFORM_SETTINGS = createTransformSettingsFromPreset(
+  DEFAULT_BRIDGE_PRESET_ID,
+)
+const BRIDGE_PRESET_OPTIONS = Object.values(BRIDGE_PRESETS)
 
 const SECTION_META = {
   bearing: {
@@ -72,6 +83,7 @@ const SECTION_META = {
 }
 
 function App() {
+  const settingsImportRef = useRef(null)
   const [fileName, setFileName] = useState('leap-loads')
   const [description, setDescription] = useState('')
   const [bearingText, setBearingText] = useState('')
@@ -83,19 +95,26 @@ function App() {
   const [generatedMeta, setGeneratedMeta] = useState(null)
   const [status, setStatus] = useState(DEFAULT_STATUS)
   const [actionMessage, setActionMessage] = useState('')
-  const [applyRemaps, setApplyRemaps] = useState(true)
-  const [applyDeleteFilters, setApplyDeleteFilters] = useState(true)
+  const [bridgePresetId, setBridgePresetId] = useState(
+    DEFAULT_TRANSFORM_SETTINGS.bridgePresetId,
+  )
+  const [applyRemaps, setApplyRemaps] = useState(
+    DEFAULT_TRANSFORM_SETTINGS.applyRemaps,
+  )
+  const [applyDeleteFilters, setApplyDeleteFilters] = useState(
+    DEFAULT_TRANSFORM_SETTINGS.applyDeleteFilters,
+  )
   const [bearingPointRemapText, setBearingPointRemapText] = useState(
-    DEFAULT_REMAPS.bearingPoint,
+    DEFAULT_TRANSFORM_SETTINGS.bearingPointRemapText,
   )
   const [columnNumberRemapText, setColumnNumberRemapText] = useState(
-    DEFAULT_REMAPS.columnNumber,
+    DEFAULT_TRANSFORM_SETTINGS.columnNumberRemapText,
   )
   const [bearingPointDeleteText, setBearingPointDeleteText] = useState(
-    DEFAULT_DELETE_FILTERS.bearingPoint,
+    DEFAULT_TRANSFORM_SETTINGS.bearingPointDeleteText,
   )
   const [columnNumberDeleteText, setColumnNumberDeleteText] = useState(
-    DEFAULT_DELETE_FILTERS.columnNumber,
+    DEFAULT_TRANSFORM_SETTINGS.columnNumberDeleteText,
   )
 
   const remapResults = {
@@ -161,27 +180,37 @@ function App() {
   }
 
   const resolvedFileName = normalizeFileName(fileName)
+  const activeBridgePreset = getBridgePreset(bridgePresetId)
+  const transformSettings = {
+    bridgePresetId,
+    applyRemaps,
+    applyDeleteFilters,
+    bearingPointRemapText,
+    columnNumberRemapText,
+    bearingPointDeleteText,
+    columnNumberDeleteText,
+  }
 
   const remapFields = [
     {
       id: 'bearingPointRemap',
       label: 'Bearing Point Remap',
-      helper: 'Default: 13 -> 6 down through 8 -> 1.',
       placeholder: '13 = 6\n12 = 5\n11 = 4\n10 = 3\n9 = 2\n8 = 1',
       value: bearingPointRemapText,
       result: remapResults.bearingPoint,
       countLabel: 'Rules',
-      activeNote: 'These remap rules are active for bearing point numbers.',
+      textareaClassName: 'remap-textarea-small',
+      rows: 5,
     },
     {
       id: 'columnNumberRemap',
       label: 'Column Number Remap',
-      helper: 'Uses the same default renumbering as bearing points.',
       placeholder: '13 = 6\n12 = 5\n11 = 4\n10 = 3\n9 = 2\n8 = 1',
       value: columnNumberRemapText,
       result: remapResults.columnNumber,
       countLabel: 'Rules',
-      activeNote: 'These remap rules are active for column numbers.',
+      textareaClassName: 'remap-textarea-small',
+      rows: 5,
     },
   ]
 
@@ -189,22 +218,22 @@ function App() {
     {
       id: 'bearingPointDelete',
       label: 'Bearing Point Delete Filter',
-      helper: 'Default removal set: 1-7 and 14-20 before any remap occurs.',
-      placeholder: '1-7\n14-20',
+      placeholder: '1-7, 14-20',
       value: bearingPointDeleteText,
       result: deleteResults.bearingPoint,
       countLabel: 'Values',
-      activeNote: 'Rows with these original bearing point numbers are removed.',
+      textareaClassName: 'remap-textarea-compact',
+      rows: 2,
     },
     {
       id: 'columnNumberDelete',
       label: 'Column Number Delete Filter',
-      helper: 'Default removal set: 1-7 and 14-20 before any remap occurs.',
-      placeholder: '1-7\n14-20',
+      placeholder: '1-7, 14-20',
       value: columnNumberDeleteText,
       result: deleteResults.columnNumber,
       countLabel: 'Values',
-      activeNote: 'Rows with these original column numbers are removed.',
+      textareaClassName: 'remap-textarea-compact',
+      rows: 2,
     },
   ]
 
@@ -213,6 +242,16 @@ function App() {
     setGeneratedMeta(null)
     setStatus(DEFAULT_STATUS)
     setActionMessage('')
+  }
+
+  const applyTransformSettings = (settings) => {
+    setBridgePresetId(settings.bridgePresetId)
+    setApplyRemaps(settings.applyRemaps)
+    setApplyDeleteFilters(settings.applyDeleteFilters)
+    setBearingPointRemapText(settings.bearingPointRemapText)
+    setColumnNumberRemapText(settings.columnNumberRemapText)
+    setBearingPointDeleteText(settings.bearingPointDeleteText)
+    setColumnNumberDeleteText(settings.columnNumberDeleteText)
   }
 
   const handleSectionChange = (sectionId, nextValue) => {
@@ -268,14 +307,63 @@ function App() {
     invalidateGeneratedOutput()
   }
 
-  const handleResetDefaults = () => {
-    setApplyRemaps(true)
-    setApplyDeleteFilters(true)
-    setBearingPointRemapText(DEFAULT_REMAPS.bearingPoint)
-    setColumnNumberRemapText(DEFAULT_REMAPS.columnNumber)
-    setBearingPointDeleteText(DEFAULT_DELETE_FILTERS.bearingPoint)
-    setColumnNumberDeleteText(DEFAULT_DELETE_FILTERS.columnNumber)
+  const handlePresetChange = (nextPresetId) => {
+    applyTransformSettings(createTransformSettingsFromPreset(nextPresetId))
     invalidateGeneratedOutput()
+    setActionMessage(`${getBridgePreset(nextPresetId).label} preset loaded.`)
+  }
+
+  const handleResetDefaults = () => {
+    applyTransformSettings(createTransformSettingsFromPreset(bridgePresetId))
+    invalidateGeneratedOutput()
+    setActionMessage(`${activeBridgePreset.label} defaults restored.`)
+  }
+
+  const handleClearSettings = () => {
+    applyTransformSettings(createClearedTransformSettings(bridgePresetId))
+    invalidateGeneratedOutput()
+    setActionMessage('Transformation settings cleared.')
+  }
+
+  const handleExportSettings = () => {
+    const blob = new Blob([serializeTransformSettings(transformSettings)], {
+      type: 'application/json;charset=utf-8',
+    })
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    const baseName = resolvedFileName.replace(/\.txt$/i, '') || 'leap-loads'
+
+    anchor.href = objectUrl
+    anchor.download = `${baseName}-settings.json`
+    anchor.click()
+
+    URL.revokeObjectURL(objectUrl)
+    setActionMessage(`Downloaded ${baseName}-settings.json.`)
+  }
+
+  const handleImportSettingsClick = () => {
+    settingsImportRef.current?.click()
+  }
+
+  const handleImportSettingsFile = async (event) => {
+    const [file] = event.target.files ?? []
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const importedSettings = parseTransformSettingsJson(await file.text())
+      applyTransformSettings(importedSettings)
+      invalidateGeneratedOutput()
+      setActionMessage(`Imported settings from ${file.name}.`)
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error ? error.message : 'Settings import failed.',
+      )
+    } finally {
+      event.target.value = ''
+    }
   }
 
   const handleGenerate = () => {
@@ -404,12 +492,7 @@ function App() {
     setBearingLiveLoads(false)
     setColumnText('')
     setCapText('')
-    setApplyRemaps(true)
-    setApplyDeleteFilters(true)
-    setBearingPointRemapText(DEFAULT_REMAPS.bearingPoint)
-    setColumnNumberRemapText(DEFAULT_REMAPS.columnNumber)
-    setBearingPointDeleteText(DEFAULT_DELETE_FILTERS.bearingPoint)
-    setColumnNumberDeleteText(DEFAULT_DELETE_FILTERS.columnNumber)
+    applyTransformSettings(DEFAULT_TRANSFORM_SETTINGS)
     setGeneratedOutput('')
     setGeneratedMeta(null)
     setStatus(DEFAULT_STATUS)
@@ -568,8 +651,12 @@ function App() {
       </section>
 
       <RemapSettings
+        title={`${activeBridgePreset.label} Setting`}
+        presetId={bridgePresetId}
+        presetOptions={BRIDGE_PRESET_OPTIONS}
         remapEnabled={applyRemaps}
         deleteEnabled={applyDeleteFilters}
+        onPresetChange={handlePresetChange}
         onRemapToggle={(nextValue) => {
           setApplyRemaps(nextValue)
           invalidateGeneratedOutput()
@@ -579,9 +666,19 @@ function App() {
           invalidateGeneratedOutput()
         }}
         onResetDefaults={handleResetDefaults}
+        onExportSettings={handleExportSettings}
+        onImportSettings={handleImportSettingsClick}
+        onClearSettings={handleClearSettings}
         remapFields={remapFields}
         deleteFields={deleteFields}
         onChange={handleTransformChange}
+      />
+      <input
+        ref={settingsImportRef}
+        className="sr-only"
+        type="file"
+        accept=".json,application/json"
+        onChange={handleImportSettingsFile}
       />
 
       <StatusBanner status={status} />

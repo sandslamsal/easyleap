@@ -205,8 +205,54 @@
 
 .remap-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
   margin-bottom: 18px;
+}
+
+.remap-toolbar-top {
+  flex-wrap: wrap;
+}
+
+.remap-select-field {
+  display: grid;
+  gap: 8px;
+  min-width: min(100%, 220px);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.remap-select-field span {
+  font-size: 0.84rem;
+  color: var(--text-soft);
+}
+
+.remap-select {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+}
+
+.remap-select:focus {
+  outline: none;
+  border-color: rgba(11, 107, 99, 0.5);
+  box-shadow: 0 0 0 4px rgba(11, 107, 99, 0.12);
+}
+
+.remap-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.remap-button-row .button {
+  min-height: 44px;
+  padding: 0 14px;
 }
 
 .transform-stack {
@@ -240,13 +286,13 @@
 
 .remap-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .remap-box {
-  padding: 18px;
+  padding: 16px;
   border-radius: 22px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 249, 248, 0.98));
   border: 1px solid rgba(206, 217, 213, 0.9);
@@ -312,8 +358,18 @@
 }
 
 .remap-textarea {
-  min-height: 160px;
-  margin-top: 14px;
+  min-height: 116px;
+  margin-top: 12px;
+  padding: 14px;
+  line-height: 1.5;
+}
+
+.remap-textarea-small {
+  min-height: 120px;
+}
+
+.remap-textarea-compact {
+  min-height: 88px;
 }
 
 .remap-note {
@@ -722,6 +778,10 @@
   .action-cluster {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .remap-button-row {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 760px) {
@@ -749,6 +809,22 @@
 
   .action-cluster {
     grid-template-columns: 1fr;
+  }
+
+  .remap-toolbar {
+    align-items: stretch;
+  }
+
+  .remap-select-field {
+    min-width: 100%;
+  }
+
+  .remap-button-row {
+    width: 100%;
+  }
+
+  .remap-button-row .button {
+    width: 100%;
   }
 
   .preview-meta {

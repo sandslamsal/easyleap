@@ -120,6 +120,13 @@ function tokenizeRow(rawLine) {
     .filter(Boolean)
 }
 
+function tokenizeCompactDeleteEntries(rawLine) {
+  return rawLine
+    .split(',')
+    .map(cleanToken)
+    .filter(Boolean)
+}
+
 function parseRows(text, rowParser) {
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
   const validRows = []
@@ -429,47 +436,43 @@ export function parseDeleteFilter(text, label) {
 
     sourceRowCount += 1
 
-    rawLine
-      .split(',')
-      .map(cleanToken)
-      .filter(Boolean)
-      .forEach((entry) => {
-        const rangeMatch = entry.match(/^(-?\d+)\s*-\s*(-?\d+)$/)
+    tokenizeCompactDeleteEntries(rawLine).forEach((entry) => {
+      const rangeMatch = entry.match(/^(-?\d+)\s*-\s*(-?\d+)$/)
 
-        if (rangeMatch) {
-          const start = Number.parseInt(rangeMatch[1], 10)
-          const end = Number.parseInt(rangeMatch[2], 10)
-          const low = Math.min(start, end)
-          const high = Math.max(start, end)
+      if (rangeMatch) {
+        const start = Number.parseInt(rangeMatch[1], 10)
+        const end = Number.parseInt(rangeMatch[2], 10)
+        const low = Math.min(start, end)
+        const high = Math.max(start, end)
 
-          for (let value = low; value <= high; value += 1) {
-            values.add(String(value))
-          }
-
-          validRows.push({
-            lineNumber: index + 1,
-            rawLine: rawLine.trim(),
-            entry,
-          })
-          return
+        for (let value = low; value <= high; value += 1) {
+          values.add(String(value))
         }
 
-        if (isIntegerToken(entry)) {
-          values.add(entry)
-          validRows.push({
-            lineNumber: index + 1,
-            rawLine: rawLine.trim(),
-            entry,
-          })
-          return
-        }
-
-        invalidRows.push({
+        validRows.push({
           lineNumber: index + 1,
           rawLine: rawLine.trim(),
-          error: `${label} entries must be integers or ranges such as 1-7.`,
+          entry,
         })
+        return
+      }
+
+      if (isIntegerToken(entry)) {
+        values.add(entry)
+        validRows.push({
+          lineNumber: index + 1,
+          rawLine: rawLine.trim(),
+          entry,
+        })
+        return
+      }
+
+      invalidRows.push({
+        lineNumber: index + 1,
+        rawLine: rawLine.trim(),
+        error: `${label} entries must be integers or ranges such as 1-7, 9, 12-14.`,
       })
+    })
   })
 
   return {

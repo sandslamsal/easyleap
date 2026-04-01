@@ -1,9 +1,12 @@
 import {
   ArrowRightLeft,
   ChevronDown,
+  Download,
   Filter,
   RotateCcw,
   Settings2,
+  Trash2,
+  Upload,
 } from 'lucide-react'
 
 function RemapStat({ label, value, tone = 'neutral' }) {
@@ -70,7 +73,8 @@ function SettingsGroup({
               </div>
 
               <textarea
-                className="load-textarea remap-textarea"
+                className={`load-textarea remap-textarea ${field.textareaClassName ?? ''}`}
+                rows={field.rows ?? 4}
                 value={field.value}
                 onChange={(event) => onChange(field.id, event.target.value)}
                 placeholder={field.placeholder}
@@ -85,13 +89,7 @@ function SettingsGroup({
                     </p>
                   ))}
                 </div>
-              ) : (
-                <p className="remap-note">
-                  {enabled
-                    ? field.activeNote
-                    : 'These settings are stored but currently not applied to output.'}
-                </p>
-              )}
+              ) : null}
             </article>
           ))}
         </div>
@@ -101,11 +99,18 @@ function SettingsGroup({
 }
 
 export function RemapSettings({
+  title,
+  presetId,
+  presetOptions,
   remapEnabled,
   deleteEnabled,
+  onPresetChange,
   onRemapToggle,
   onDeleteToggle,
   onResetDefaults,
+  onExportSettings,
+  onImportSettings,
+  onClearSettings,
   remapFields,
   deleteFields,
   onChange,
@@ -115,21 +120,62 @@ export function RemapSettings({
       <summary className="accordion-summary accordion-summary-outer">
         <div className="section-title-row">
           <Settings2 size={18} />
-          <h2>Renumber / Delete Settings</h2>
+          <h2>{title}</h2>
         </div>
         <ChevronDown size={18} className="accordion-chevron" />
       </summary>
 
       <div className="accordion-body">
-        <div className="remap-toolbar">
-          <button
-            className="button button-secondary"
-            type="button"
-            onClick={onResetDefaults}
-          >
-            <RotateCcw size={16} />
-            <span>Reset Defaults</span>
-          </button>
+        <div className="remap-toolbar remap-toolbar-top">
+          <label className="remap-select-field">
+            <span>Bridge Preset</span>
+            <select
+              className="remap-select"
+              value={presetId}
+              onChange={(event) => onPresetChange(event.target.value)}
+            >
+              {presetOptions.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="remap-button-row">
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={onResetDefaults}
+            >
+              <RotateCcw size={16} />
+              <span>Reset Defaults</span>
+            </button>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={onExportSettings}
+            >
+              <Download size={16} />
+              <span>Export Settings JSON</span>
+            </button>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={onImportSettings}
+            >
+              <Upload size={16} />
+              <span>Import Settings JSON</span>
+            </button>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={onClearSettings}
+            >
+              <Trash2 size={16} />
+              <span>Clear Settings</span>
+            </button>
+          </div>
         </div>
 
         <div className="transform-stack">

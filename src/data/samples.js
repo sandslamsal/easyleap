@@ -50,24 +50,56 @@ UDL\tY\t4.0\t0\t1.0
 Moment    Z    7.0    0.5`,
 }
 
-export const DEFAULT_REMAPS = {
-  bearingPoint: `13 = 6
+export const BRIDGE_PRESETS = {
+  bridge6: {
+    id: 'bridge6',
+    label: 'Bridge 6',
+    remaps: {
+      bearingPoint: `13 = 6
 12 = 5
 11 = 4
 10 = 3
 9 = 2
 8 = 1`,
-  columnNumber: `13 = 6
+      columnNumber: `13 = 6
 12 = 5
 11 = 4
 10 = 3
 9 = 2
 8 = 1`,
+    },
+    deletes: {
+      bearingPoint: '1-7, 14-20',
+      columnNumber: '1-7, 14-20',
+    },
+  },
+  bridge4: {
+    id: 'bridge4',
+    label: 'Bridge 4',
+    remaps: {
+      bearingPoint: `13 = 6
+12 = 5
+11 = 4
+10 = 3
+9 = 2
+8 = 1`,
+      columnNumber: `13 = 6
+12 = 5
+11 = 4
+10 = 3
+9 = 2
+8 = 1`,
+    },
+    deletes: {
+      bearingPoint: '1-7',
+      columnNumber: '1-7',
+    },
+  },
 }
 
-export const DEFAULT_DELETE_FILTERS = {
-  bearingPoint: `1-7
-14-20`,
-  columnNumber: `1-7
-14-20`,
-}
+export const DEFAULT_BRIDGE_PRESET_ID = 'bridge6'
+
+export const DEFAULT_REMAPS = BRIDGE_PRESETS[DEFAULT_BRIDGE_PRESET_ID].remaps
+
+export const DEFAULT_DELETE_FILTERS =
+  BRIDGE_PRESETS[DEFAULT_BRIDGE_PRESET_ID].deletes
