@@ -22,6 +22,16 @@ assert.equal(
   'Column UDL rows should drop the 6th input column.',
 )
 
+const columnExampleWithEighth = parseColumnLoads(
+  'Col 6 UDL X -0.0312 0.7464 0.000 0.9743 99.9',
+).validRows[0]?.normalized
+
+assert.equal(
+  columnExampleWithEighth,
+  '6, UDL, X, -0.0312, 0.7464, 0.9743',
+  'Column rows should also drop an extra 8th input column.',
+)
+
 const capExamples = parseCapLoads(
   ['Force X 0.00 -1.2 0.5 0.00 0.00', 'UDL Z 0.00 -0.04 0.00 0.00 1.00'].join(
     '\n',
@@ -32,6 +42,19 @@ assert.deepEqual(
   capExamples,
   ['Force, X, 0.00, -1.2, 0.5', 'UDL, Z, -0.04, 0.00, 1.00'],
   'Cap Force and UDL rows should trim fields per LEAP export rules.',
+)
+
+const capExamplesWithEighth = parseCapLoads(
+  [
+    'Force X 0.00 -1.2 0.5 0.00 0.00 9.99',
+    'UDL Z 0.00 -0.04 0.00 0.00 1.00 9.99',
+  ].join('\n'),
+).validRows.map((row) => row.normalized)
+
+assert.deepEqual(
+  capExamplesWithEighth,
+  ['Force, X, 0.00, -1.2, 0.5', 'UDL, Z, -0.04, 0.00, 1.00'],
+  'Cap rows should also drop an extra 8th input column.',
 )
 
 const ws9Sections = ws9Text.split(/\n\n+/)

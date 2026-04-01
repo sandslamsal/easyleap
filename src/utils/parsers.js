@@ -31,23 +31,42 @@ function normalizeLoadType(loadType) {
 }
 
 function transformColumnValues(loadType, values) {
-  if (loadType === 'UDL' && values.length >= 4) {
-    return values.filter((_, index) => index !== 2)
+  const removedIndexes = new Set()
+
+  // Drop an extra pasted 8th overall input column.
+  if (values.length >= 5) {
+    removedIndexes.add(4)
   }
 
-  return values
+  if (loadType === 'UDL' && values.length >= 4) {
+    // For column UDL rows, the original 6th overall input column is omitted.
+    removedIndexes.add(2)
+  }
+
+  return values.filter((_, index) => !removedIndexes.has(index))
 }
 
 function transformCapValues(loadType, values) {
+  const removedIndexes = new Set()
+
+  // Drop an extra pasted 8th overall input column.
+  if (values.length >= 6) {
+    removedIndexes.add(5)
+  }
+
   if (loadType === 'Force' && values.length >= 5) {
-    return values.slice(0, 3)
+    // Force rows omit the original 6th and 7th overall input columns.
+    removedIndexes.add(3)
+    removedIndexes.add(4)
   }
 
   if (loadType === 'UDL' && values.length >= 5) {
-    return values.filter((_, index) => index !== 0 && index !== 3)
+    // UDL rows omit the original 3rd and 6th overall input columns.
+    removedIndexes.add(0)
+    removedIndexes.add(3)
   }
 
-  return values
+  return values.filter((_, index) => !removedIndexes.has(index))
 }
 
 function applyIntegerRemap(token, remapMap) {
