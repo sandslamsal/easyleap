@@ -5,7 +5,6 @@ import {
   Download,
   Eraser,
   Eye,
-  FileCog,
   FileText,
   Filter,
   Layers3,
@@ -487,15 +486,7 @@ function App() {
     <main className="app-shell">
       <section className="hero-card">
         <div className="hero-copy">
-          <div className="eyebrow">
-            <FileCog size={16} />
-            <span>Bridge Engineering Utility</span>
-          </div>
           <h1>LEAP Load TXT Builder</h1>
-          <p className="hero-text">
-            Convert pasted bearing, column, and cap load data into one clean
-            LEAP RC-PIER import file without Excel uploads or backend tools.
-          </p>
         </div>
 
         <div className="hero-metrics">
