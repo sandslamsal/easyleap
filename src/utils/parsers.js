@@ -30,6 +30,14 @@ function normalizeLoadType(loadType) {
   return LOAD_TYPE_CASE_MAP.get(normalized.toLowerCase()) ?? normalized
 }
 
+function transformColumnValues(loadType, values) {
+  if (loadType === 'UDL' && values.length >= 3) {
+    return values.filter((_, index) => index !== 2)
+  }
+
+  return values
+}
+
 function applyIntegerRemap(token, remapMap) {
   if (!remapMap || remapMap.size === 0) {
     return token
@@ -260,7 +268,10 @@ function parseColumnRow(tokens, options = {}) {
     columnId.remainingTokens.slice(0, directionIndex).join(' '),
   )
   const direction = columnId.remainingTokens[directionIndex]
-  const values = columnId.remainingTokens.slice(directionIndex + 1)
+  const values = transformColumnValues(
+    loadType,
+    columnId.remainingTokens.slice(directionIndex + 1),
+  )
   const columnNumber = applyIntegerRemap(
     columnId.columnNumber,
     options.columnNumberMap,
