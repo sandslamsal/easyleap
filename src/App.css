@@ -8,7 +8,6 @@
 .toolbar-card,
 .remap-card,
 .tabs-card,
-.info-card,
 .status-banner {
   border: 1px solid var(--border);
   border-radius: 28px;
@@ -18,9 +17,6 @@
 }
 
 .hero-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
-  gap: 24px;
   padding: 32px;
   position: relative;
   overflow: hidden;
@@ -38,8 +34,6 @@
 .hero-copy {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: flex-start;
 }
 
 .hero-card h1 {
@@ -50,43 +44,9 @@
   letter-spacing: -0.04em;
 }
 
-.hero-metrics {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-  position: relative;
-  z-index: 1;
-}
-
-.metric-card {
-  padding: 18px 20px;
-  border-radius: 22px;
-  background: var(--surface-strong);
-  border: 1px solid rgba(173, 188, 184, 0.9);
-}
-
-.metric-card-alert {
-  border-color: rgba(193, 71, 61, 0.25);
-  background: rgba(255, 238, 234, 0.95);
-}
-
-.metric-label {
-  display: block;
-  color: var(--text-soft);
-  font-size: 0.86rem;
-  margin-bottom: 10px;
-}
-
-.metric-card strong {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-}
-
 .toolbar-card,
 .remap-card,
 .tabs-card,
-.info-strip,
 .status-banner {
   margin-top: 20px;
 }
@@ -217,33 +177,6 @@
   display: none;
 }
 
-.accordion-summary p {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-}
-
-.accordion-summary-copy {
-  min-width: 0;
-}
-
-.accordion-summary-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  color: var(--text-soft);
-  font-size: 0.88rem;
-  text-align: right;
-}
-
-.accordion-summary-meta span {
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid var(--border);
-}
-
 .accordion-chevron {
   transition: transform 180ms ease;
   flex-shrink: 0;
@@ -255,26 +188,25 @@
 }
 
 .accordion-summary-outer {
-  padding: 24px;
+  padding: 18px 22px;
 }
 
 .accordion-summary-inner {
-  padding: 20px;
+  padding: 16px 18px;
 }
 
 .accordion-body {
-  padding: 0 24px 24px;
+  padding: 0 22px 22px;
 }
 
 .accordion-group > .accordion-body {
-  padding: 0 20px 20px;
+  padding: 0 18px 18px;
 }
 
 .remap-toolbar {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: start;
+  justify-content: flex-end;
+  margin-bottom: 18px;
 }
 
 .transform-stack {
@@ -702,24 +634,6 @@
   margin: 0;
 }
 
-.info-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.info-card {
-  display: flex;
-  gap: 14px;
-  padding: 22px;
-  align-items: start;
-}
-
-.info-card p {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -732,11 +646,9 @@
 }
 
 @media (max-width: 1080px) {
-  .hero-card,
   .toolbar-grid,
   .remap-grid,
-  .preview-meta,
-  .info-strip {
+  .preview-meta {
     grid-template-columns: 1fr;
   }
 
@@ -763,8 +675,7 @@
   }
 
   .section-header,
-  .accordion-summary,
-  .remap-toolbar {
+  .accordion-summary {
     flex-direction: column;
   }
 

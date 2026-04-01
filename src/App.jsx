@@ -1,12 +1,9 @@
 import { startTransition, useState } from 'react'
 import {
-  ArrowRightLeft,
   ClipboardCopy,
   Download,
   Eraser,
   Eye,
-  FileText,
-  Filter,
   Layers3,
   Pill,
   SquareStack,
@@ -156,24 +153,6 @@ function App() {
       0,
     ),
     invalidRules: Object.values(deleteResults).reduce(
-      (sum, result) => sum + result.invalidRows.length,
-      0,
-    ),
-  }
-
-  const liveTotals = {
-    sectionsWithData: Object.values(liveResults).filter(
-      (result) => result.sourceRowCount > 0,
-    ).length,
-    parsedRows: Object.values(liveResults).reduce(
-      (sum, result) => sum + result.validRows.length,
-      0,
-    ),
-    filteredRows: Object.values(liveResults).reduce(
-      (sum, result) => sum + result.filteredRows.length,
-      0,
-    ),
-    invalidRows: Object.values(liveResults).reduce(
       (sum, result) => sum + result.invalidRows.length,
       0,
     ),
@@ -488,29 +467,6 @@ function App() {
         <div className="hero-copy">
           <h1>LEAP Load TXT Builder</h1>
         </div>
-
-        <div className="hero-metrics">
-          <div className="metric-card">
-            <span className="metric-label">Sections with data</span>
-            <strong>{liveTotals.sectionsWithData}</strong>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">Parsed rows</span>
-            <strong>{liveTotals.parsedRows}</strong>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">Delete-filtered rows</span>
-            <strong>{liveTotals.filteredRows}</strong>
-          </div>
-          <div
-            className={`metric-card ${liveTotals.invalidRows || remapTotals.invalidRules || deleteTotals.invalidRules ? 'metric-card-alert' : ''}`}
-          >
-            <span className="metric-label">Invalid items</span>
-            <strong>
-              {liveTotals.invalidRows + remapTotals.invalidRules + deleteTotals.invalidRules}
-            </strong>
-          </div>
-        </div>
       </section>
 
       <section className="toolbar-card">
@@ -640,41 +596,6 @@ function App() {
             icon={activeSection.icon}
           />
         )}
-      </section>
-
-      <section className="info-strip">
-        <div className="info-card">
-          <FileText size={18} />
-          <div>
-            <h2>LEAP Formatting</h2>
-            <p>
-              Exports use the exact section titles <code>Bearing loads</code>,{' '}
-              <code>Column Loads</code>, and <code>Cap Loads</code>, with
-              uppercase directions and normalized <code>, </code> separators.
-            </p>
-          </div>
-        </div>
-        <div className="info-card">
-          <ArrowRightLeft size={18} />
-          <div>
-            <h2>Default Renumbering</h2>
-            <p>
-              Bearing point numbers and column numbers default to{' '}
-              <code>13-8</code> remapped down to <code>6-1</code>.
-            </p>
-          </div>
-        </div>
-        <div className="info-card">
-          <Filter size={18} />
-          <div>
-            <h2>Default Deletions</h2>
-            <p>
-              Original bearing point numbers in <code>1-6</code> and{' '}
-              <code>14-20</code>, plus original column numbers in <code>1-7</code>{' '}
-              and <code>14-20</code>, are removed when delete filters are enabled.
-            </p>
-          </div>
-        </div>
       </section>
     </main>
   )
