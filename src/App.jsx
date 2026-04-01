@@ -219,8 +219,8 @@ function App() {
     {
       id: 'columnNumberDelete',
       label: 'Column Number Delete Filter',
-      helper: 'Default removal set: 1-6 and 14-20 before any remap occurs.',
-      placeholder: '1-6\n14-20',
+      helper: 'Default removal set: 1-7 and 14-20 before any remap occurs.',
+      placeholder: '1-7\n14-20',
       value: columnNumberDeleteText,
       result: deleteResults.columnNumber,
       countLabel: 'Values',
@@ -678,8 +678,9 @@ function App() {
           <div>
             <h2>Default Deletions</h2>
             <p>
-              Original bearing point and column numbers in <code>1-6</code> and{' '}
-              <code>14-20</code> are removed when delete filters are enabled.
+              Original bearing point numbers in <code>1-6</code> and{' '}
+              <code>14-20</code>, plus original column numbers in <code>1-7</code>{' '}
+              and <code>14-20</code>, are removed when delete filters are enabled.
             </p>
           </div>
         </div>

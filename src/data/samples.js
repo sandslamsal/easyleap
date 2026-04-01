@@ -51,6 +51,6 @@ export const DEFAULT_REMAPS = {
 export const DEFAULT_DELETE_FILTERS = {
   bearingPoint: `1-6
 14-20`,
-  columnNumber: `1-6
+  columnNumber: `1-7
 14-20`,
 }

@@ -216,7 +216,85 @@
 }
 
 .remap-card {
+  padding: 0;
+}
+
+.accordion-card,
+.accordion-group {
+  overflow: hidden;
+}
+
+.accordion-summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-summary p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.accordion-summary-copy {
+  min-width: 0;
+}
+
+.accordion-summary-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  text-align: right;
+}
+
+.accordion-summary-meta span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--border);
+}
+
+.accordion-chevron {
+  transition: transform 180ms ease;
+  flex-shrink: 0;
+}
+
+.accordion-card[open] > .accordion-summary .accordion-chevron,
+.accordion-group[open] > .accordion-summary .accordion-chevron {
+  transform: rotate(180deg);
+}
+
+.accordion-summary-outer {
   padding: 24px;
+}
+
+.accordion-summary-inner {
+  padding: 20px;
+}
+
+.accordion-body {
+  padding: 0 24px 24px;
+}
+
+.accordion-group > .accordion-body {
+  padding: 0 20px 20px;
+}
+
+.remap-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
 }
 
 .transform-stack {
@@ -226,25 +304,8 @@
 }
 
 .transform-group {
-  padding: 20px;
-  border-radius: 24px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 249, 248, 0.98));
   border: 1px solid rgba(206, 217, 213, 0.9);
-}
-
-.transform-group-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: start;
-}
-
-.remap-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .remap-toggle {
@@ -716,21 +777,15 @@
 
   .hero-card,
   .toolbar-card,
-  .remap-card,
-  .transform-group,
   .section-card,
   .preview-card {
     padding: 20px;
   }
 
   .section-header,
-  .transform-group-header {
+  .accordion-summary,
+  .remap-toolbar {
     flex-direction: column;
-  }
-
-  .remap-actions {
-    width: 100%;
-    justify-content: flex-start;
   }
 
   .action-cluster {
@@ -743,5 +798,13 @@
 
   .tab-list {
     padding-bottom: 2px;
+  }
+
+  .accordion-summary-outer,
+  .accordion-summary-inner,
+  .accordion-body,
+  .accordion-group > .accordion-body {
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }
