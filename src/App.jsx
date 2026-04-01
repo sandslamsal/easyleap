@@ -7,6 +7,7 @@ import {
   Eye,
   FileCog,
   FileText,
+  Filter,
   Layers3,
   Pill,
   SquareStack,
@@ -17,13 +18,19 @@ import { PreviewPanel } from './components/PreviewPanel.jsx'
 import { RemapSettings } from './components/RemapSettings.jsx'
 import { SectionEditor } from './components/SectionEditor.jsx'
 import { StatusBanner } from './components/StatusBanner.jsx'
-import { DEFAULT_REMAPS, PLACEHOLDERS, SAMPLE_DATA } from './data/samples.js'
+import {
+  DEFAULT_DELETE_FILTERS,
+  DEFAULT_REMAPS,
+  PLACEHOLDERS,
+  SAMPLE_DATA,
+} from './data/samples.js'
 import {
   buildLeapTxt,
   normalizeFileName,
   parseBearingLoads,
   parseCapLoads,
   parseColumnLoads,
+  parseDeleteFilter,
   parseIdRemap,
 } from './utils/parsers.js'
 
@@ -35,20 +42,21 @@ const DEFAULT_STATUS = {
 }
 
 const EMPTY_REMAP = new Map()
+const EMPTY_DELETE_SET = new Set()
 
 const SECTION_META = {
   bearing: {
     id: 'bearing',
     title: 'Bearing Loads',
     helper:
-      'Paste rows copied from Excel, TXT, PDF, or other tables. The export normalizes each row to comma-separated LEAP formatting.',
+      'Paste rows copied from Excel, TXT, PDF, or other tables. Bearing point delete filters and remaps are applied during export when enabled.',
     icon: Pill,
   },
   column: {
     id: 'column',
     title: 'Column Loads',
     helper:
-      'Paste LEAP-style column load rows. Column numbers can also be remapped through the default settings panel.',
+      'Paste LEAP-style column load rows. Labels such as "Col 13" or "Column 8" are normalized automatically.',
     icon: SquareStack,
   },
   cap: {
@@ -79,51 +87,76 @@ function App() {
   const [status, setStatus] = useState(DEFAULT_STATUS)
   const [actionMessage, setActionMessage] = useState('')
   const [applyRemaps, setApplyRemaps] = useState(true)
-  const [bearingLineRemapText, setBearingLineRemapText] = useState(
-    DEFAULT_REMAPS.bearingLine,
-  )
+  const [applyDeleteFilters, setApplyDeleteFilters] = useState(true)
   const [bearingPointRemapText, setBearingPointRemapText] = useState(
     DEFAULT_REMAPS.bearingPoint,
   )
   const [columnNumberRemapText, setColumnNumberRemapText] = useState(
     DEFAULT_REMAPS.columnNumber,
   )
+  const [bearingPointDeleteText, setBearingPointDeleteText] = useState(
+    DEFAULT_DELETE_FILTERS.bearingPoint,
+  )
+  const [columnNumberDeleteText, setColumnNumberDeleteText] = useState(
+    DEFAULT_DELETE_FILTERS.columnNumber,
+  )
 
   const remapResults = {
-    bearingLine: parseIdRemap(bearingLineRemapText, 'Bearing line remap'),
     bearingPoint: parseIdRemap(bearingPointRemapText, 'Bearing point remap'),
     columnNumber: parseIdRemap(columnNumberRemapText, 'Column number remap'),
   }
 
-  const activeRemapMaps = applyRemaps
-    ? {
-        bearingLineMap: remapResults.bearingLine.map,
-        bearingPointMap: remapResults.bearingPoint.map,
-        columnNumberMap: remapResults.columnNumber.map,
-      }
-    : {
-        bearingLineMap: EMPTY_REMAP,
-        bearingPointMap: EMPTY_REMAP,
-        columnNumberMap: EMPTY_REMAP,
-      }
+  const deleteResults = {
+    bearingPoint: parseDeleteFilter(
+      bearingPointDeleteText,
+      'Bearing point delete filter',
+    ),
+    columnNumber: parseDeleteFilter(
+      columnNumberDeleteText,
+      'Column number delete filter',
+    ),
+  }
+
+  const activeMaps = {
+    bearingPointMap: applyRemaps ? remapResults.bearingPoint.map : EMPTY_REMAP,
+    columnNumberMap: applyRemaps ? remapResults.columnNumber.map : EMPTY_REMAP,
+    bearingPointDeleteSet: applyDeleteFilters
+      ? deleteResults.bearingPoint.values
+      : EMPTY_DELETE_SET,
+    columnNumberDeleteSet: applyDeleteFilters
+      ? deleteResults.columnNumber.values
+      : EMPTY_DELETE_SET,
+  }
 
   const liveResults = {
     bearing: parseBearingLoads(bearingText, {
-      bearingLineMap: activeRemapMaps.bearingLineMap,
-      bearingPointMap: activeRemapMaps.bearingPointMap,
+      bearingPointMap: activeMaps.bearingPointMap,
+      bearingPointDeleteSet: activeMaps.bearingPointDeleteSet,
     }),
     column: parseColumnLoads(columnText, {
-      columnNumberMap: activeRemapMaps.columnNumberMap,
+      columnNumberMap: activeMaps.columnNumberMap,
+      columnNumberDeleteSet: activeMaps.columnNumberDeleteSet,
     }),
     cap: parseCapLoads(capText),
   }
 
   const remapTotals = {
     validRules: Object.values(remapResults).reduce(
-      (sum, result) => sum + result.validRows.length,
+      (sum, result) => sum + result.totalCount,
       0,
     ),
     invalidRules: Object.values(remapResults).reduce(
+      (sum, result) => sum + result.invalidRows.length,
+      0,
+    ),
+  }
+
+  const deleteTotals = {
+    values: Object.values(deleteResults).reduce(
+      (sum, result) => sum + result.totalCount,
+      0,
+    ),
+    invalidRules: Object.values(deleteResults).reduce(
       (sum, result) => sum + result.invalidRows.length,
       0,
     ),
@@ -137,40 +170,61 @@ function App() {
       (sum, result) => sum + result.validRows.length,
       0,
     ),
+    filteredRows: Object.values(liveResults).reduce(
+      (sum, result) => sum + result.filteredRows.length,
+      0,
+    ),
     invalidRows: Object.values(liveResults).reduce(
       (sum, result) => sum + result.invalidRows.length,
       0,
     ),
-    remapRules: remapTotals.validRules,
   }
 
   const resolvedFileName = normalizeFileName(fileName)
 
   const remapFields = [
     {
-      id: 'bearingLine',
-      label: 'Bearing Line Remap',
-      helper: 'Example sample default: bearing line 8 becomes 1.',
-      placeholder: '8 = 1',
-      value: bearingLineRemapText,
-      result: remapResults.bearingLine,
-    },
-    {
-      id: 'bearingPoint',
+      id: 'bearingPointRemap',
       label: 'Bearing Point Remap',
-      helper: 'Sample default: bearing points 13 -> 6 and 12 -> 5.',
-      placeholder: '13 = 6\n12 = 5',
+      helper: 'Default: 13 -> 6 down through 8 -> 1.',
+      placeholder: '13 = 6\n12 = 5\n11 = 4\n10 = 3\n9 = 2\n8 = 1',
       value: bearingPointRemapText,
       result: remapResults.bearingPoint,
+      countLabel: 'Rules',
+      activeNote: 'These remap rules are active for bearing point numbers.',
     },
     {
-      id: 'columnNumber',
+      id: 'columnNumberRemap',
       label: 'Column Number Remap',
-      helper:
-        'Column number remaps use the same rule syntax and can be left blank or edited.',
-      placeholder: '13 = 6\n12 = 5\n8 = 1',
+      helper: 'Uses the same default renumbering as bearing points.',
+      placeholder: '13 = 6\n12 = 5\n11 = 4\n10 = 3\n9 = 2\n8 = 1',
       value: columnNumberRemapText,
       result: remapResults.columnNumber,
+      countLabel: 'Rules',
+      activeNote: 'These remap rules are active for column numbers.',
+    },
+  ]
+
+  const deleteFields = [
+    {
+      id: 'bearingPointDelete',
+      label: 'Bearing Point Delete Filter',
+      helper: 'Default removal set: 1-6 and 14-20 before any remap occurs.',
+      placeholder: '1-6\n14-20',
+      value: bearingPointDeleteText,
+      result: deleteResults.bearingPoint,
+      countLabel: 'Values',
+      activeNote: 'Rows with these original bearing point numbers are removed.',
+    },
+    {
+      id: 'columnNumberDelete',
+      label: 'Column Number Delete Filter',
+      helper: 'Default removal set: 1-6 and 14-20 before any remap occurs.',
+      placeholder: '1-6\n14-20',
+      value: columnNumberDeleteText,
+      result: deleteResults.columnNumber,
+      countLabel: 'Values',
+      activeNote: 'Rows with these original column numbers are removed.',
     },
   ]
 
@@ -214,75 +268,91 @@ function App() {
     invalidateGeneratedOutput()
   }
 
-  const handleRemapChange = (fieldId, nextValue) => {
-    if (fieldId === 'bearingLine') {
-      setBearingLineRemapText(nextValue)
-    }
-
-    if (fieldId === 'bearingPoint') {
+  const handleTransformChange = (fieldId, nextValue) => {
+    if (fieldId === 'bearingPointRemap') {
       setBearingPointRemapText(nextValue)
     }
 
-    if (fieldId === 'columnNumber') {
+    if (fieldId === 'columnNumberRemap') {
       setColumnNumberRemapText(nextValue)
+    }
+
+    if (fieldId === 'bearingPointDelete') {
+      setBearingPointDeleteText(nextValue)
+    }
+
+    if (fieldId === 'columnNumberDelete') {
+      setColumnNumberDeleteText(nextValue)
     }
 
     invalidateGeneratedOutput()
   }
 
-  const handleResetRemaps = () => {
+  const handleResetDefaults = () => {
     setApplyRemaps(true)
-    setBearingLineRemapText(DEFAULT_REMAPS.bearingLine)
+    setApplyDeleteFilters(true)
     setBearingPointRemapText(DEFAULT_REMAPS.bearingPoint)
     setColumnNumberRemapText(DEFAULT_REMAPS.columnNumber)
+    setBearingPointDeleteText(DEFAULT_DELETE_FILTERS.bearingPoint)
+    setColumnNumberDeleteText(DEFAULT_DELETE_FILTERS.columnNumber)
     invalidateGeneratedOutput()
   }
 
   const handleGenerate = () => {
     const buildResult = buildLeapTxt(liveResults)
-    const remapWarnings = []
+    const transformWarnings = []
 
     if (applyRemaps) {
       remapFields.forEach((field) => {
-        if (field.result.validRows.length > 0) {
-          remapWarnings.push(
-            `${field.label} applied ${field.result.validRows.length} rule(s) before export.`,
-          )
-        }
-
-        if (field.result.invalidRows.length > 0) {
-          remapWarnings.push(
-            `${field.label} has ${field.result.invalidRows.length} invalid rule(s). Only valid rules were applied.`,
+        if (field.result.totalCount > 0) {
+          transformWarnings.push(
+            `${field.label} applied ${field.result.totalCount} rule(s) before export.`,
           )
         }
       })
-    } else {
-      if (remapTotals.validRules > 0) {
-        remapWarnings.push(
-          'Remap rules are stored but disabled for this export.',
-        )
-      }
-
-      remapFields.forEach((field) => {
-        if (field.result.invalidRows.length > 0) {
-          remapWarnings.push(
-            `${field.label} has ${field.result.invalidRows.length} invalid rule(s).`,
-          )
-        }
-      })
+    } else if (remapTotals.validRules > 0) {
+      transformWarnings.push('Renumber rules are stored but disabled for this export.')
     }
 
-    const combinedWarnings = [...remapWarnings, ...buildResult.warnings]
-    const totalIssueCount = buildResult.totalInvalidRows + remapTotals.invalidRules
+    if (applyDeleteFilters) {
+      deleteFields.forEach((field) => {
+        if (field.result.totalCount > 0) {
+          transformWarnings.push(
+            `${field.label} checks ${field.result.totalCount} number(s) before export.`,
+          )
+        }
+      })
+    } else if (deleteTotals.values > 0) {
+      transformWarnings.push('Delete filters are stored but disabled for this export.')
+    }
+
+    remapFields.forEach((field) => {
+      if (field.result.invalidRows.length > 0) {
+        transformWarnings.push(
+          `${field.label} has ${field.result.invalidRows.length} invalid rule(s). Only valid rules were applied.`,
+        )
+      }
+    })
+
+    deleteFields.forEach((field) => {
+      if (field.result.invalidRows.length > 0) {
+        transformWarnings.push(
+          `${field.label} has ${field.result.invalidRows.length} invalid entry(ies). Only valid values were applied.`,
+        )
+      }
+    })
+
+    const combinedWarnings = [...transformWarnings, ...buildResult.warnings]
+    const totalIssueCount =
+      buildResult.totalInvalidRows +
+      remapTotals.invalidRules +
+      deleteTotals.invalidRules
 
     startTransition(() => {
       setGeneratedOutput(buildResult.output)
       setGeneratedMeta({
         generatedAt: new Date(),
         warnings: combinedWarnings,
-        includedSectionCount: buildResult.includedSectionCount,
-        totalValidRows: buildResult.totalValidRows,
-        totalInvalidRows: buildResult.totalInvalidRows,
       })
       setActiveTab('preview')
       setActionMessage('')
@@ -308,10 +378,23 @@ function App() {
           issueParts.push(`${remapTotals.invalidRules} invalid remap rule(s) were ignored`)
         }
 
+        if (deleteTotals.invalidRules > 0) {
+          issueParts.push(`${deleteTotals.invalidRules} invalid delete entry(ies) were ignored`)
+        }
+
         setStatus({
           kind: 'error',
           title: 'Errors Found',
           message: `${issueParts.join('. ')}. ${buildResult.totalValidRows} valid row(s) are still ready for export.`,
+        })
+        return
+      }
+
+      if (buildResult.totalFilteredRows > 0) {
+        setStatus({
+          kind: 'success',
+          title: 'Parsed Successfully',
+          message: `${buildResult.totalValidRows} valid row(s) exported. ${buildResult.totalFilteredRows} row(s) were removed by active delete filters.`,
         })
         return
       }
@@ -331,9 +414,11 @@ function App() {
     setColumnText('')
     setCapText('')
     setApplyRemaps(true)
-    setBearingLineRemapText(DEFAULT_REMAPS.bearingLine)
+    setApplyDeleteFilters(true)
     setBearingPointRemapText(DEFAULT_REMAPS.bearingPoint)
     setColumnNumberRemapText(DEFAULT_REMAPS.columnNumber)
+    setBearingPointDeleteText(DEFAULT_DELETE_FILTERS.bearingPoint)
+    setColumnNumberDeleteText(DEFAULT_DELETE_FILTERS.columnNumber)
     setGeneratedOutput('')
     setGeneratedMeta(null)
     setStatus(DEFAULT_STATUS)
@@ -423,14 +508,16 @@ function App() {
             <strong>{liveTotals.parsedRows}</strong>
           </div>
           <div className="metric-card">
-            <span className="metric-label">Active remap rules</span>
-            <strong>{applyRemaps ? liveTotals.remapRules : 0}</strong>
+            <span className="metric-label">Delete-filtered rows</span>
+            <strong>{liveTotals.filteredRows}</strong>
           </div>
           <div
-            className={`metric-card ${liveTotals.invalidRows || remapTotals.invalidRules ? 'metric-card-alert' : ''}`}
+            className={`metric-card ${liveTotals.invalidRows || remapTotals.invalidRules || deleteTotals.invalidRules ? 'metric-card-alert' : ''}`}
           >
             <span className="metric-label">Invalid items</span>
-            <strong>{liveTotals.invalidRows + remapTotals.invalidRules}</strong>
+            <strong>
+              {liveTotals.invalidRows + remapTotals.invalidRules + deleteTotals.invalidRules}
+            </strong>
           </div>
         </div>
       </section>
@@ -501,14 +588,20 @@ function App() {
       </section>
 
       <RemapSettings
-        enabled={applyRemaps}
-        onToggle={(nextValue) => {
+        remapEnabled={applyRemaps}
+        deleteEnabled={applyDeleteFilters}
+        onRemapToggle={(nextValue) => {
           setApplyRemaps(nextValue)
           invalidateGeneratedOutput()
         }}
-        onResetDefaults={handleResetRemaps}
-        fields={remapFields}
-        onChange={handleRemapChange}
+        onDeleteToggle={(nextValue) => {
+          setApplyDeleteFilters(nextValue)
+          invalidateGeneratedOutput()
+        }}
+        onResetDefaults={handleResetDefaults}
+        remapFields={remapFields}
+        deleteFields={deleteFields}
+        onChange={handleTransformChange}
       />
 
       <StatusBanner status={status} />
@@ -571,22 +664,22 @@ function App() {
           </div>
         </div>
         <div className="info-card">
-          <ClipboardCopy size={18} />
+          <ArrowRightLeft size={18} />
           <div>
-            <h2>Accepted Sources</h2>
+            <h2>Default Renumbering</h2>
             <p>
-              Paste copied rows from Excel, TXT, PDFs, or other tables directly
-              into the app. No upload or server processing is used.
+              Bearing point numbers and column numbers default to{' '}
+              <code>13-8</code> remapped down to <code>6-1</code>.
             </p>
           </div>
         </div>
         <div className="info-card">
-          <ArrowRightLeft size={18} />
+          <Filter size={18} />
           <div>
-            <h2>Remap Rules</h2>
+            <h2>Default Deletions</h2>
             <p>
-              Default remaps let you renumber bearing lines, bearing points,
-              and columns before the LEAP TXT file is assembled.
+              Original bearing point and column numbers in <code>1-6</code> and{' '}
+              <code>14-20</code> are removed when delete filters are enabled.
             </p>
           </div>
         </div>

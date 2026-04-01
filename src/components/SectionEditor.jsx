@@ -1,4 +1,10 @@
-import { AlertTriangle, ClipboardPaste, Rows3, ShieldCheck } from 'lucide-react'
+import {
+  AlertTriangle,
+  ClipboardPaste,
+  Filter,
+  Rows3,
+  ShieldCheck,
+} from 'lucide-react'
 
 function StatChip({ label, value, tone = 'neutral' }) {
   return (
@@ -41,6 +47,7 @@ export function SectionEditor({
       <div className="section-stats">
         <StatChip label="Pasted Rows" value={result.sourceRowCount} />
         <StatChip label="Parsed Rows" value={result.validRows.length} tone="success" />
+        <StatChip label="Filtered Rows" value={result.filteredRows.length} />
         <StatChip label="Invalid Rows" value={result.invalidRows.length} tone="danger" />
       </div>
 
@@ -87,6 +94,27 @@ export function SectionEditor({
           </p>
         </div>
       )}
+
+      {result.filteredRows.length > 0 ? (
+        <div className="feedback-panel feedback-panel-info">
+          <div className="feedback-header">
+            <Filter size={16} />
+            <span>Rows removed by filters</span>
+          </div>
+          <div className="feedback-list">
+            {result.filteredRows.map((row) => (
+              <article key={`${row.lineNumber}-${row.rawLine}`} className="issue-card">
+                <div className="issue-card-header">
+                  <Rows3 size={14} />
+                  <strong>Line {row.lineNumber}</strong>
+                </div>
+                <p>{row.reason}</p>
+                <code>{row.rawLine}</code>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

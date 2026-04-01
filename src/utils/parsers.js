@@ -23,7 +23,6 @@ const cleanToken = (token) =>
 const isIntegerToken = (token) => INTEGER_PATTERN.test(token)
 const isNumericToken = (token) => NUMBER_PATTERN.test(token)
 const isDirectionToken = (token) => DIRECTION_PATTERN.test(token)
-
 const toUpperDirection = (token) => token.toUpperCase()
 
 function normalizeLoadType(loadType) {
@@ -39,6 +38,14 @@ function applyIntegerRemap(token, remapMap) {
   return remapMap.get(token) ?? token
 }
 
+function shouldDeleteInteger(token, deleteSet) {
+  if (!deleteSet || deleteSet.size === 0) {
+    return false
+  }
+
+  return deleteSet.has(token)
+}
+
 function tokenizeRow(rawLine) {
   const line = cleanToken(rawLine)
 
@@ -46,7 +53,6 @@ function tokenizeRow(rawLine) {
     return []
   }
 
-  // Favor explicit delimiters first, then progressively relax to whitespace.
   if (line.includes(',')) {
     return line
       .split(/\s*,\s*/)
@@ -78,6 +84,7 @@ function parseRows(text, rowParser) {
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
   const validRows = []
   const invalidRows = []
+  const filteredRows = []
   let sourceRowCount = 0
 
   lines.forEach((rawLine, index) => {
@@ -89,6 +96,15 @@ function parseRows(text, rowParser) {
 
     const tokens = tokenizeRow(rawLine)
     const parsedRow = rowParser(tokens)
+
+    if (parsedRow.skip) {
+      filteredRows.push({
+        lineNumber: index + 1,
+        rawLine: rawLine.trim(),
+        reason: parsedRow.reason,
+      })
+      return
+    }
 
     if (parsedRow.error) {
       invalidRows.push({
@@ -110,6 +126,7 @@ function parseRows(text, rowParser) {
     sourceRowCount,
     validRows,
     invalidRows,
+    filteredRows,
   }
 }
 
@@ -127,14 +144,21 @@ function parseBearingRow(tokens, options = {}) {
     }
   }
 
-  const [rawBearingLine, rawBearingPoint, direction, loadValue, tag] = tokens
+  const [bearingLine, rawBearingPoint, direction, loadValue, tag] = tokens
 
-  if (!isIntegerToken(rawBearingLine)) {
+  if (!isIntegerToken(bearingLine)) {
     return { error: 'Bearing line must be an integer.' }
   }
 
   if (!isIntegerToken(rawBearingPoint)) {
     return { error: 'Bearing point number must be an integer.' }
+  }
+
+  if (shouldDeleteInteger(rawBearingPoint, options.bearingPointDeleteSet)) {
+    return {
+      skip: true,
+      reason: `Removed because bearing point ${rawBearingPoint} matches the delete filter.`,
+    }
   }
 
   if (!isDirectionToken(direction)) {
@@ -149,9 +173,7 @@ function parseBearingRow(tokens, options = {}) {
     return { error: 'Bearing tag must be T or L when provided.' }
   }
 
-  const bearingLine = applyIntegerRemap(rawBearingLine, options.bearingLineMap)
   const bearingPoint = applyIntegerRemap(rawBearingPoint, options.bearingPointMap)
-
   const normalizedTokens = [
     bearingLine,
     bearingPoint,
@@ -168,6 +190,43 @@ function parseBearingRow(tokens, options = {}) {
   }
 }
 
+function extractColumnNumber(tokens) {
+  if (tokens.length === 0) {
+    return {
+      error: 'Column number is missing.',
+    }
+  }
+
+  const [firstToken, secondToken] = tokens
+  const combinedMatch = firstToken.match(/^col(?:umn)?\s*(-?\d+)$/i)
+
+  if (isIntegerToken(firstToken)) {
+    return {
+      columnNumber: firstToken,
+      remainingTokens: tokens.slice(1),
+    }
+  }
+
+  if (combinedMatch) {
+    return {
+      columnNumber: combinedMatch[1],
+      remainingTokens: tokens.slice(1),
+    }
+  }
+
+  if (/^col(?:umn)?$/i.test(firstToken) && isIntegerToken(secondToken ?? '')) {
+    return {
+      columnNumber: secondToken,
+      remainingTokens: tokens.slice(2),
+    }
+  }
+
+  return {
+    error:
+      'Column number must be an integer or a label such as "Col 3" or "Column 3".',
+  }
+}
+
 function parseColumnRow(tokens, options = {}) {
   if (tokens.length < 4) {
     return {
@@ -176,23 +235,36 @@ function parseColumnRow(tokens, options = {}) {
     }
   }
 
-  const [rawColumnNumber] = tokens
-  const directionIndex = tokens.findIndex(
-    (token, index) => index >= 2 && isDirectionToken(token),
-  )
+  const columnId = extractColumnNumber(tokens)
 
-  if (!isIntegerToken(rawColumnNumber)) {
-    return { error: 'Column number must be an integer.' }
+  if (columnId.error) {
+    return { error: columnId.error }
   }
+
+  if (shouldDeleteInteger(columnId.columnNumber, options.columnNumberDeleteSet)) {
+    return {
+      skip: true,
+      reason: `Removed because column ${columnId.columnNumber} matches the delete filter.`,
+    }
+  }
+
+  const directionIndex = columnId.remainingTokens.findIndex(
+    (token, index) => index >= 1 && isDirectionToken(token),
+  )
 
   if (directionIndex === -1) {
     return { error: 'Column row must include an X, Y, or Z direction value.' }
   }
 
-  const loadType = normalizeLoadType(tokens.slice(1, directionIndex).join(' '))
-  const direction = tokens[directionIndex]
-  const values = tokens.slice(directionIndex + 1)
-  const columnNumber = applyIntegerRemap(rawColumnNumber, options.columnNumberMap)
+  const loadType = normalizeLoadType(
+    columnId.remainingTokens.slice(0, directionIndex).join(' '),
+  )
+  const direction = columnId.remainingTokens[directionIndex]
+  const values = columnId.remainingTokens.slice(directionIndex + 1)
+  const columnNumber = applyIntegerRemap(
+    columnId.columnNumber,
+    options.columnNumberMap,
+  )
 
   if (!loadType) {
     return { error: 'Column load type is missing.' }
@@ -274,7 +346,6 @@ export function parseIdRemap(text, label) {
     }
 
     const [from, to] = matches
-
     map.set(from, to)
     validRows.push({
       lineNumber: index + 1,
@@ -289,6 +360,73 @@ export function parseIdRemap(text, label) {
     validRows,
     invalidRows,
     map,
+    totalCount: validRows.length,
+  }
+}
+
+export function parseDeleteFilter(text, label) {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  const validRows = []
+  const invalidRows = []
+  const values = new Set()
+  let sourceRowCount = 0
+
+  lines.forEach((rawLine, index) => {
+    if (!rawLine.trim()) {
+      return
+    }
+
+    sourceRowCount += 1
+
+    rawLine
+      .split(',')
+      .map(cleanToken)
+      .filter(Boolean)
+      .forEach((entry) => {
+        const rangeMatch = entry.match(/^(-?\d+)\s*-\s*(-?\d+)$/)
+
+        if (rangeMatch) {
+          const start = Number.parseInt(rangeMatch[1], 10)
+          const end = Number.parseInt(rangeMatch[2], 10)
+          const low = Math.min(start, end)
+          const high = Math.max(start, end)
+
+          for (let value = low; value <= high; value += 1) {
+            values.add(String(value))
+          }
+
+          validRows.push({
+            lineNumber: index + 1,
+            rawLine: rawLine.trim(),
+            entry,
+          })
+          return
+        }
+
+        if (isIntegerToken(entry)) {
+          values.add(entry)
+          validRows.push({
+            lineNumber: index + 1,
+            rawLine: rawLine.trim(),
+            entry,
+          })
+          return
+        }
+
+        invalidRows.push({
+          lineNumber: index + 1,
+          rawLine: rawLine.trim(),
+          error: `${label} entries must be integers or ranges such as 1-6.`,
+        })
+      })
+  })
+
+  return {
+    sourceRowCount,
+    validRows,
+    invalidRows,
+    values,
+    totalCount: values.size,
   }
 }
 
@@ -312,6 +450,7 @@ export function buildLeapTxt(results) {
       rows: results.bearing.validRows.map((row) => row.normalized),
       sourceRowCount: results.bearing.sourceRowCount,
       invalidCount: results.bearing.invalidRows.length,
+      filteredCount: results.bearing.filteredRows.length,
     },
     {
       label: 'Column Loads',
@@ -319,6 +458,7 @@ export function buildLeapTxt(results) {
       rows: results.column.validRows.map((row) => row.normalized),
       sourceRowCount: results.column.sourceRowCount,
       invalidCount: results.column.invalidRows.length,
+      filteredCount: results.column.filteredRows.length,
     },
     {
       label: 'Cap Loads',
@@ -326,6 +466,7 @@ export function buildLeapTxt(results) {
       rows: results.cap.validRows.map((row) => row.normalized),
       sourceRowCount: results.cap.sourceRowCount,
       invalidCount: results.cap.invalidRows.length,
+      filteredCount: results.cap.filteredRows.length,
     },
   ]
 
@@ -345,6 +486,12 @@ export function buildLeapTxt(results) {
       return
     }
 
+    if (section.filteredCount > 0) {
+      warnings.push(
+        `${section.label} filtered out ${section.filteredCount} row(s) using delete settings.`,
+      )
+    }
+
     if (section.invalidCount > 0) {
       warnings.push(
         `${section.label} has ${section.invalidCount} invalid row(s). Only valid rows were included in the export.`,
@@ -361,6 +508,10 @@ export function buildLeapTxt(results) {
     totalValidRows: sections.reduce((sum, section) => sum + section.rows.length, 0),
     totalInvalidRows: sections.reduce(
       (sum, section) => sum + section.invalidCount,
+      0,
+    ),
+    totalFilteredRows: sections.reduce(
+      (sum, section) => sum + section.filteredCount,
       0,
     ),
   }

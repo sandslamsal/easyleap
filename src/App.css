@@ -219,6 +219,26 @@
   padding: 24px;
 }
 
+.transform-stack {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.transform-group {
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 249, 248, 0.98));
+  border: 1px solid rgba(206, 217, 213, 0.9);
+}
+
+.transform-group-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
 .remap-actions {
   display: flex;
   gap: 12px;
@@ -267,6 +287,11 @@
 }
 
 .remap-box h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.remap-box h4 {
   margin: 0;
   font-size: 1rem;
 }
@@ -692,12 +717,14 @@
   .hero-card,
   .toolbar-card,
   .remap-card,
+  .transform-group,
   .section-card,
   .preview-card {
     padding: 20px;
   }
 
-  .section-header {
+  .section-header,
+  .transform-group-header {
     flex-direction: column;
   }
 
