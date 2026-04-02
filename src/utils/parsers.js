@@ -43,77 +43,51 @@ function truncateFields(fields, maxCount) {
   return fields.slice(0, maxCount)
 }
 
-function removeFieldsByOneBasedPosition(fields, positionsToDelete) {
-  const nextFields = [...fields]
+function cleanupColumnValues(loadType, values) {
+  const normalizedLoadType = loadType.toLowerCase()
 
-  ;[...positionsToDelete]
-    .sort((left, right) => right - left)
-    .forEach((position) => {
-      const index = position - 1
+  if (normalizedLoadType === 'udl' && values.length >= 4) {
+    // UDL rows omit the original 6th input column and keep the 7th.
+    return values.filter((_, index) => index !== 2)
+  }
 
-      if (index >= 0 && index < nextFields.length) {
-        nextFields.splice(index, 1)
-      }
-    })
+  if (normalizedLoadType === 'pressure' && values.length >= 3) {
+    // Pressure rows omit the original 6th input column.
+    return values.filter((_, index) => index !== 2)
+  }
 
-  return nextFields
+  if (normalizedLoadType === 'settlement' && values.length >= 2) {
+    // Settlement rows omit the original 5th, 6th, and 7th input columns.
+    return values.filter((_, index) => index === 0)
+  }
+
+  if (normalizedLoadType === 'moment' && values.length >= 3) {
+    // Moment rows omit the original 6th and 7th input columns.
+    return values.filter((_, index) => index < 2)
+  }
+
+  return values
 }
 
-function cleanupNormalizedColumnFields(fields) {
-  const loadType = fields[1]?.toLowerCase()
-  const positionsToDelete = new Set()
+function cleanupCapValues(loadType, values) {
+  const normalizedLoadType = loadType.toLowerCase()
 
-  if (loadType === 'udl') {
-    // UDL rows omit normalized fields 6 and 7.
-    positionsToDelete.add(6)
-    positionsToDelete.add(7)
+  if (normalizedLoadType === 'force' && values.length >= 5) {
+    // Force rows omit the original 6th and 7th input columns.
+    return values.filter((_, index) => index < 3)
   }
 
-  if (loadType === 'pressure') {
-    // Pressure rows omit normalized field 6.
-    positionsToDelete.add(6)
+  if (normalizedLoadType === 'udl' && values.length >= 5) {
+    // UDL rows omit the original 3rd and 6th input columns.
+    return values.filter((_, index) => index !== 0 && index !== 3)
   }
 
-  if (loadType === 'settlement') {
-    // Settlement rows omit normalized fields 5, 6, and 7.
-    positionsToDelete.add(5)
-    positionsToDelete.add(6)
-    positionsToDelete.add(7)
+  if (normalizedLoadType === 'moment' && values.length >= 5) {
+    // Moment rows omit the original 3rd, 6th, and 7th input columns.
+    return values.filter((_, index) => index !== 0 && index !== 3 && index !== 4)
   }
 
-  if (loadType === 'moment') {
-    // Moment rows omit normalized fields 6 and 7.
-    positionsToDelete.add(6)
-    positionsToDelete.add(7)
-  }
-
-  return removeFieldsByOneBasedPosition(fields, positionsToDelete)
-}
-
-function cleanupNormalizedCapFields(fields) {
-  const loadType = fields[0]?.toLowerCase()
-  const positionsToDelete = new Set()
-
-  if (loadType === 'force') {
-    // Force rows omit normalized fields 6 and 7.
-    positionsToDelete.add(6)
-    positionsToDelete.add(7)
-  }
-
-  if (loadType === 'udl') {
-    // UDL rows omit normalized fields 3 and 6.
-    positionsToDelete.add(3)
-    positionsToDelete.add(6)
-  }
-
-  if (loadType === 'moment') {
-    // Moment rows omit normalized fields 3, 6, and 7.
-    positionsToDelete.add(3)
-    positionsToDelete.add(6)
-    positionsToDelete.add(7)
-  }
-
-  return removeFieldsByOneBasedPosition(fields, positionsToDelete)
+  return values
 }
 
 function applyIntegerRemap(token, remapMap) {
@@ -365,9 +339,12 @@ function parseColumnRow(tokens, options = {}) {
   const direction = columnId.remainingTokens[directionIndex]
   // Ignore any pasted values beyond the supported normalized column structure
   // before validation so trailing Excel/PDF columns do not trigger row errors.
-  const values = truncateFields(
+  const values = cleanupColumnValues(
+    loadType,
+    truncateFields(
     columnId.remainingTokens.slice(directionIndex + 1),
     MAX_COLUMN_VALUE_COUNT,
+    ),
   )
   const columnNumber = applyIntegerRemap(
     columnId.columnNumber,
@@ -386,24 +363,15 @@ function parseColumnRow(tokens, options = {}) {
     return { error: 'Column load values after direction must be numeric.' }
   }
 
-  const normalizedFields = [
-    columnNumber,
-    loadType,
-    toUpperDirection(direction),
-    ...values,
-  ]
-  // Ignore any pasted fields beyond the supported normalized column structure.
-  const cleanedFields = cleanupNormalizedColumnFields(
-    truncateFields(normalizedFields, MAX_COLUMN_FIELDS),
-  )
+  const normalizedFields = [columnNumber, loadType, toUpperDirection(direction), ...values]
 
-  if (cleanedFields.length < 4) {
+  if (normalizedFields.length < 4) {
     return { error: 'Column cleanup removed all numeric values from this row.' }
   }
 
   return {
-    fields: cleanedFields,
-    normalized: formatFields(cleanedFields),
+    fields: normalizedFields,
+    normalized: formatFields(normalizedFields),
   }
 }
 
@@ -426,9 +394,9 @@ function parseCapRow(tokens) {
   const direction = tokens[directionIndex]
   // Ignore any pasted values beyond the supported normalized cap structure
   // before validation so trailing Excel/PDF columns do not trigger row errors.
-  const values = truncateFields(
-    tokens.slice(directionIndex + 1),
-    MAX_CAP_VALUE_COUNT,
+  const values = cleanupCapValues(
+    loadType,
+    truncateFields(tokens.slice(directionIndex + 1), MAX_CAP_VALUE_COUNT),
   )
 
   if (!loadType) {
@@ -444,18 +412,14 @@ function parseCapRow(tokens) {
   }
 
   const normalizedFields = [loadType, toUpperDirection(direction), ...values]
-  // Ignore any pasted fields beyond the supported normalized cap structure.
-  const cleanedFields = cleanupNormalizedCapFields(
-    truncateFields(normalizedFields, MAX_CAP_FIELDS),
-  )
 
-  if (cleanedFields.length < 3) {
+  if (normalizedFields.length < 3) {
     return { error: 'Cap cleanup removed all numeric values from this row.' }
   }
 
   return {
-    fields: cleanedFields,
-    normalized: formatFields(cleanedFields),
+    fields: normalizedFields,
+    normalized: formatFields(normalizedFields),
   }
 }
 

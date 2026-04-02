@@ -31,8 +31,8 @@ const columnExample = parseColumnLoads(
 
 assert.equal(
   columnExample,
-  '6, UDL, X, -0.0312, 0.7464',
-  'Column UDL rows should drop normalized fields 6 and 7.',
+  '6, UDL, X, -0.0312, 0.7464, 0.9743',
+  'Column UDL rows should drop the original 6th input column only.',
 )
 
 const columnExampleWithEighth = parseColumnLoads(
@@ -41,7 +41,7 @@ const columnExampleWithEighth = parseColumnLoads(
 
 assert.equal(
   columnExampleWithEighth,
-  '6, UDL, X, -0.0312, 0.7464',
+  '6, UDL, X, -0.0312, 0.7464, 0.9743',
   'Column rows should also drop an extra 8th normalized field.',
 )
 
@@ -51,7 +51,7 @@ const columnExampleBeyondEighth = parseColumnLoads(
 
 assert.equal(
   columnExampleBeyondEighth,
-  '6, UDL, X, -0.0312, 0.7464',
+  '6, UDL, X, -0.0312, 0.7464, 0.9743',
   'Column rows should ignore any fields beyond the supported structure.',
 )
 
@@ -67,8 +67,18 @@ assert.equal(
 
 assert.equal(
   columnExampleWithTextBeyondSupport.validRows[0]?.normalized,
-  '6, UDL, X, -0.0312, 0.7464',
+  '6, UDL, X, -0.0312, 0.7464, 0.9743',
   'Column rows should ignore non-numeric columns beyond the supported structure.',
+)
+
+const columnUdlExampleFromUser = parseColumnLoads(
+  'Col 10 UDL X 2 5 4 3 klf',
+).validRows[0]?.normalized
+
+assert.equal(
+  columnUdlExampleFromUser,
+  '10, UDL, X, 2, 5, 3',
+  'Column UDL rows should keep the 7th input value while dropping the 6th and ignoring an extra 8th+ value.',
 )
 
 const columnCleanupExamples = parseColumnLoads(
@@ -552,10 +562,10 @@ const rebuiltWs9 = buildLeapTxt({
 
 const expectedRebuiltWs9 = [
   ws9Sections[0],
-  ['Column Loads', '1, Force, X, 1.1, 1.0', '1, UDL, Z, 3.0, 0', '1, Pressure, Z, 5.0, 0'].join(
+  ['Column Loads', '1, Force, X, 1.1, 1.0', '1, UDL, Z, 3.0, 0, 1.0', '1, Pressure, Z, 5.0, 0'].join(
     '\n',
   ),
-  ['Cap Loads', 'Force, X, 1.0, 2.0, 0.5', 'UDL, Y, 0, 1.0', 'Moment, Z, 0.5'].join(
+  ['Cap Loads', 'Force, X, 1.0, 2.0, 0.5', 'UDL, Y, 4.0, 0, 1.0', 'Moment, Z, 7.0, 0.5'].join(
     '\n',
   ),
 ].join('\n\n')
