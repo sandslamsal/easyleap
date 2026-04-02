@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Download,
   Filter,
+  Info,
   RotateCcw,
   Settings2,
   Trash2,
@@ -72,15 +73,45 @@ function SettingsGroup({
                 />
               </div>
 
-              <textarea
-                className={`load-textarea remap-textarea ${field.textareaClassName ?? ''}`}
-                rows={field.rows ?? 4}
-                wrap="off"
-                value={field.value}
-                onChange={(event) => onChange(field.id, event.target.value)}
-                placeholder={field.placeholder}
-                spellCheck={false}
-              />
+              {field.control === 'single-line' ? (
+                <input
+                  className={`field-input remap-single-input ${field.inputClassName ?? ''}`}
+                  type="text"
+                  value={field.displayValue ?? field.value}
+                  onChange={(event) =>
+                    onChange(
+                      field.id,
+                      field.parseInputValue
+                        ? field.parseInputValue(event.target.value)
+                        : event.target.value,
+                    )
+                  }
+                  onPaste={
+                    field.parsePastedValue
+                      ? (event) => {
+                          const pastedText = event.clipboardData.getData('text')
+
+                          if (pastedText.includes('\n') || pastedText.includes('\r')) {
+                            event.preventDefault()
+                            onChange(field.id, field.parsePastedValue(pastedText))
+                          }
+                        }
+                      : undefined
+                  }
+                  placeholder={field.placeholder}
+                  spellCheck={false}
+                />
+              ) : (
+                <textarea
+                  className={`load-textarea remap-textarea ${field.textareaClassName ?? ''}`}
+                  rows={field.rows ?? 4}
+                  wrap="off"
+                  value={field.value}
+                  onChange={(event) => onChange(field.id, event.target.value)}
+                  placeholder={field.placeholder}
+                  spellCheck={false}
+                />
+              )}
 
               {field.result.invalidRows.length > 0 ? (
                 <div className="remap-error-list">
@@ -104,6 +135,7 @@ export function RemapSettings({
   presetId,
   presetOptions,
   presetLabel,
+  headerMessage,
   remapEnabled,
   deleteEnabled,
   onPresetChange,
@@ -124,7 +156,13 @@ export function RemapSettings({
           <Settings2 size={18} />
           <h2>{title}</h2>
         </div>
-        <ChevronDown size={18} className="accordion-chevron" />
+        <div className="remap-summary-side">
+          <div className="remap-header-status" aria-live="polite">
+            <Info size={15} />
+            <span>{headerMessage}</span>
+          </div>
+          <ChevronDown size={18} className="accordion-chevron" />
+        </div>
       </summary>
 
       <div className="accordion-body">

@@ -46,12 +46,41 @@ const DEFAULT_STATUS = {
 
 const EMPTY_REMAP = new Map()
 const EMPTY_DELETE_SET = new Set()
+const REMAP_DISPLAY_SEPARATOR = ' | '
 const DEFAULT_TRANSFORM_SETTINGS = createTransformSettingsFromPreset(
   DEFAULT_BRIDGE_PRESET_ID,
 )
 const BRIDGE_PRESET_OPTIONS = ['bridge4', 'bridge6', 'user'].map(
   (presetId) => BRIDGE_PRESETS[presetId],
 )
+
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n?/g, '\n')
+}
+
+function toSingleLineSettingDisplay(value, separator) {
+  return normalizeLineEndings(value)
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join(separator)
+}
+
+function fromSingleLineRemapInput(value) {
+  return normalizeLineEndings(value)
+    .split(/\s*(?:\||;|,)\s*|\n+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+function fromSingleLineDeleteInput(value) {
+  return normalizeLineEndings(value)
+    .split(/\n+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join(', ')
+}
 
 const SECTION_META = {
   bearing: {
@@ -182,6 +211,11 @@ function App() {
 
   const resolvedFileName = normalizeFileName(fileName)
   const activeBridgePreset = getBridgePreset(bridgePresetId)
+  const bridgeHeaderMessage =
+    actionMessage ||
+    (generatedOutput
+      ? 'TXT output is ready for download or copy.'
+      : 'Generate output to enable export actions.')
   const transformSettings = {
     bridgePresetId,
     applyRemaps,
@@ -196,22 +230,34 @@ function App() {
     {
       id: 'bearingPointRemap',
       label: 'Bearing Point Remap',
-      placeholder: '13 = 6',
+      placeholder: `13 = 6${REMAP_DISPLAY_SEPARATOR}12 = 5`,
       value: bearingPointRemapText,
+      displayValue: toSingleLineSettingDisplay(
+        bearingPointRemapText,
+        REMAP_DISPLAY_SEPARATOR,
+      ),
       result: remapResults.bearingPoint,
       countLabel: 'Rules',
-      textareaClassName: 'remap-textarea-single-line',
-      rows: 1,
+      control: 'single-line',
+      inputClassName: 'remap-single-input',
+      parseInputValue: fromSingleLineRemapInput,
+      parsePastedValue: fromSingleLineRemapInput,
     },
     {
       id: 'columnNumberRemap',
       label: 'Column Number Remap',
-      placeholder: '13 = 6',
+      placeholder: `13 = 6${REMAP_DISPLAY_SEPARATOR}12 = 5`,
       value: columnNumberRemapText,
+      displayValue: toSingleLineSettingDisplay(
+        columnNumberRemapText,
+        REMAP_DISPLAY_SEPARATOR,
+      ),
       result: remapResults.columnNumber,
       countLabel: 'Rules',
-      textareaClassName: 'remap-textarea-single-line',
-      rows: 1,
+      control: 'single-line',
+      inputClassName: 'remap-single-input',
+      parseInputValue: fromSingleLineRemapInput,
+      parsePastedValue: fromSingleLineRemapInput,
     },
   ]
 
@@ -221,20 +267,26 @@ function App() {
       label: 'Bearing Point Delete Filter',
       placeholder: '1-7, 14-20',
       value: bearingPointDeleteText,
+      displayValue: toSingleLineSettingDisplay(bearingPointDeleteText, ', '),
       result: deleteResults.bearingPoint,
       countLabel: 'Values',
-      textareaClassName: 'remap-textarea-single-line',
-      rows: 1,
+      control: 'single-line',
+      inputClassName: 'remap-single-input',
+      parseInputValue: fromSingleLineDeleteInput,
+      parsePastedValue: fromSingleLineDeleteInput,
     },
     {
       id: 'columnNumberDelete',
       label: 'Column Number Delete Filter',
       placeholder: '1-7, 14-20',
       value: columnNumberDeleteText,
+      displayValue: toSingleLineSettingDisplay(columnNumberDeleteText, ', '),
       result: deleteResults.columnNumber,
       countLabel: 'Values',
-      textareaClassName: 'remap-textarea-single-line',
-      rows: 1,
+      control: 'single-line',
+      inputClassName: 'remap-single-input',
+      parseInputValue: fromSingleLineDeleteInput,
+      parsePastedValue: fromSingleLineDeleteInput,
     },
   ]
 
@@ -628,9 +680,6 @@ function App() {
               <ClipboardCopy size={16} />
               <span>Copy Output</span>
             </button>
-            <p className="action-message" aria-live="polite">
-              {actionMessage || 'Generate output to enable export actions.'}
-            </p>
           </div>
         </div>
       </section>
@@ -640,6 +689,7 @@ function App() {
         presetId={bridgePresetId}
         presetOptions={BRIDGE_PRESET_OPTIONS}
         presetLabel="Bridge"
+        headerMessage={bridgeHeaderMessage}
         remapEnabled={applyRemaps}
         deleteEnabled={applyDeleteFilters}
         onPresetChange={handlePresetChange}

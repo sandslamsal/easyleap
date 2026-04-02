@@ -228,6 +228,35 @@
   color: var(--text-soft);
 }
 
+.remap-summary-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.remap-header-status {
+  min-width: 0;
+  max-width: 440px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(47, 91, 114, 0.14);
+  background: rgba(229, 240, 245, 0.88);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.remap-header-status span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .remap-select {
   min-height: 44px;
   padding: 0 14px;
@@ -374,6 +403,15 @@
   height: 50px;
   min-height: 50px;
   max-height: 50px;
+}
+
+.remap-single-input {
+  min-height: 46px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
 }
 
 .remap-note {
@@ -804,6 +842,16 @@
   .section-header,
   .accordion-summary {
     flex-direction: column;
+  }
+
+  .remap-summary-side {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .remap-header-status {
+    flex: 1;
+    max-width: none;
   }
 
   .section-actions {
