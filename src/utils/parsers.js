@@ -2,6 +2,8 @@ const INTEGER_PATTERN = /^[-+]?\d+$/
 const NUMBER_PATTERN = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/
 const DIRECTION_PATTERN = /^[XYZ]$/i
 const LIVE_LOAD_TAG_PATTERN = /^[TL]$/i
+const MAX_COLUMN_FIELDS = 7
+const MAX_CAP_FIELDS = 7
 
 const LOAD_TYPE_CASE_MAP = new Map([
   ['force', 'Force'],
@@ -31,6 +33,14 @@ function normalizeLoadType(loadType) {
   return LOAD_TYPE_CASE_MAP.get(normalized.toLowerCase()) ?? normalized
 }
 
+function truncateFields(fields, maxCount) {
+  if (fields.length <= maxCount) {
+    return fields
+  }
+
+  return fields.slice(0, maxCount)
+}
+
 function removeFieldsByOneBasedPosition(fields, positionsToDelete) {
   const nextFields = [...fields]
 
@@ -50,9 +60,6 @@ function removeFieldsByOneBasedPosition(fields, positionsToDelete) {
 function cleanupNormalizedColumnFields(fields) {
   const loadType = fields[1]?.toLowerCase()
   const positionsToDelete = new Set()
-
-  // Preserve the earlier behavior that ignores an extra pasted 8th field.
-  positionsToDelete.add(8)
 
   if (loadType === 'udl') {
     // UDL rows omit normalized fields 6 and 7.
@@ -84,9 +91,6 @@ function cleanupNormalizedColumnFields(fields) {
 function cleanupNormalizedCapFields(fields) {
   const loadType = fields[0]?.toLowerCase()
   const positionsToDelete = new Set()
-
-  // Preserve the earlier behavior that ignores an extra pasted 8th field.
-  positionsToDelete.add(8)
 
   if (loadType === 'force') {
     // Force rows omit normalized fields 6 and 7.
@@ -381,7 +385,10 @@ function parseColumnRow(tokens, options = {}) {
     toUpperDirection(direction),
     ...values,
   ]
-  const cleanedFields = cleanupNormalizedColumnFields(normalizedFields)
+  // Ignore any pasted fields beyond the supported normalized column structure.
+  const cleanedFields = cleanupNormalizedColumnFields(
+    truncateFields(normalizedFields, MAX_COLUMN_FIELDS),
+  )
 
   if (cleanedFields.length < 4) {
     return { error: 'Column cleanup removed all numeric values from this row.' }
@@ -425,7 +432,10 @@ function parseCapRow(tokens) {
   }
 
   const normalizedFields = [loadType, toUpperDirection(direction), ...values]
-  const cleanedFields = cleanupNormalizedCapFields(normalizedFields)
+  // Ignore any pasted fields beyond the supported normalized cap structure.
+  const cleanedFields = cleanupNormalizedCapFields(
+    truncateFields(normalizedFields, MAX_CAP_FIELDS),
+  )
 
   if (cleanedFields.length < 3) {
     return { error: 'Cap cleanup removed all numeric values from this row.' }

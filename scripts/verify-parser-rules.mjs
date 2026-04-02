@@ -45,6 +45,16 @@ assert.equal(
   'Column rows should also drop an extra 8th normalized field.',
 )
 
+const columnExampleBeyondEighth = parseColumnLoads(
+  'Col 6 UDL X -0.0312 0.7464 0.000 0.9743 99.9 123.4',
+).validRows[0]?.normalized
+
+assert.equal(
+  columnExampleBeyondEighth,
+  '6, UDL, X, -0.0312, 0.7464',
+  'Column rows should ignore any fields beyond the supported structure.',
+)
+
 const columnCleanupExamples = parseColumnLoads(
   [
     '4 Pressure Z 5.0 0.0 1.0 9.0',
@@ -88,6 +98,19 @@ assert.deepEqual(
   capExamplesWithEighth,
   ['Force, X, 0.00, -1.2, 0.5', 'UDL, Z, -0.04, 0.00, 1.00'],
   'Cap rows should also drop an extra 8th input column.',
+)
+
+const capExamplesBeyondEighth = parseCapLoads(
+  [
+    'Force X 0.00 -1.2 0.5 0.00 0.00 9.99 8.88',
+    'Moment Y 0 12 3 4 5 999 111',
+  ].join('\n'),
+).validRows.map((row) => row.normalized)
+
+assert.deepEqual(
+  capExamplesBeyondEighth,
+  ['Force, X, 0.00, -1.2, 0.5', 'Moment, Y, 12, 3'],
+  'Cap rows should ignore any fields beyond the supported structure.',
 )
 
 const capMomentExample = parseCapLoads(
