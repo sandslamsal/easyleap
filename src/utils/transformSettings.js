@@ -4,7 +4,12 @@ import {
 } from '../data/samples.js'
 
 const SETTINGS_JSON_VERSION = 1
-const LEGACY_PRESET_ID_MAP = new Map([['create', 'user']])
+const LEGACY_PRESET_ID_MAP = new Map([
+  ['bridge4', 'i16_bridge_4'],
+  ['bridge6', 'i16_bridge_6'],
+  ['bridge9', 'i16_bridge_9'],
+  ['create', 'user'],
+])
 
 function requireString(value, fieldName) {
   if (typeof value !== 'string') {

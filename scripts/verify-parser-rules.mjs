@@ -12,9 +12,14 @@ import {
 import {
   createClearedTransformSettings,
   createTransformSettingsFromPreset,
+  getBridgePreset,
   parseTransformSettingsJson,
   serializeTransformSettings,
 } from '../src/utils/transformSettings.js'
+import {
+  BRIDGE_PRESETS,
+  DEFAULT_BRIDGE_PRESET_ID,
+} from '../src/data/samples.js'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const ws9Path = path.join(repoRoot, 'tests', 'fixtures', 'WS9.txt')
@@ -183,44 +188,89 @@ assert.deepEqual(
   'Delete filters should parse compact comma-separated integers and ranges.',
 )
 
-const bridge6Settings = createTransformSettingsFromPreset('bridge6')
-const bridge4Settings = createTransformSettingsFromPreset('bridge4')
+assert.equal(
+  DEFAULT_BRIDGE_PRESET_ID,
+  'user',
+  'User should be the default preset on first load.',
+)
+
+assert.deepEqual(
+  Object.values(BRIDGE_PRESETS).map((preset) => preset.label),
+  ['I-16 Bridge 4', 'I-16 Bridge 6', 'I-16 Bridge 9', 'User'],
+  'Preset labels should match the new I-16 naming and User mode.',
+)
+
+const bridge6Settings = createTransformSettingsFromPreset('i16_bridge_6')
+const bridge4Settings = createTransformSettingsFromPreset('i16_bridge_4')
+const bridge9Settings = createTransformSettingsFromPreset('i16_bridge_9')
 const userSettings = createTransformSettingsFromPreset('user')
 
 assert.equal(
   bridge6Settings.bearingPointDeleteText,
   '1-7, 14-20',
-  'Bridge 6 should keep the existing delete defaults.',
+  'I-16 Bridge 6 should keep the existing delete defaults.',
 )
 
 assert.equal(
   bridge6Settings.bearingPointRemapText,
   ['13 = 6', '12 = 5', '11 = 4', '10 = 3', '9 = 2', '8 = 1'].join('\n'),
-  'Bridge 6 should keep the existing remap defaults.',
+  'I-16 Bridge 6 should keep the existing remap defaults.',
 )
 
 assert.equal(
   bridge4Settings.bearingPointDeleteText,
   '1-7',
-  'Bridge 4 should default bearing delete settings to 1-7.',
+  'I-16 Bridge 4 should default bearing delete settings to 1-7.',
 )
 
 assert.equal(
   bridge4Settings.columnNumberDeleteText,
   '1-7',
-  'Bridge 4 should default column delete settings to 1-7.',
+  'I-16 Bridge 4 should default column delete settings to 1-7.',
 )
 
 assert.equal(
   bridge4Settings.bearingPointRemapText,
   ['10 = 3', '9 = 2', '8 = 1'].join('\n'),
-  'Bridge 4 should use the shorter bearing remap preset.',
+  'I-16 Bridge 4 should use the shorter bearing remap preset.',
 )
 
 assert.equal(
   bridge4Settings.columnNumberRemapText,
   ['10 = 3', '9 = 2', '8 = 1'].join('\n'),
-  'Bridge 4 should use the shorter column remap preset.',
+  'I-16 Bridge 4 should use the shorter column remap preset.',
+)
+
+assert.deepEqual(
+  bridge9Settings,
+  {
+    bridgePresetId: 'i16_bridge_9',
+    applyRemaps: true,
+    applyDeleteFilters: true,
+    bearingPointRemapText: bridge4Settings.bearingPointRemapText,
+    columnNumberRemapText: bridge4Settings.columnNumberRemapText,
+    bearingPointDeleteText: bridge4Settings.bearingPointDeleteText,
+    columnNumberDeleteText: bridge4Settings.columnNumberDeleteText,
+  },
+  'I-16 Bridge 9 should use the same defaults as I-16 Bridge 4.',
+)
+
+assert.equal(
+  getBridgePreset('bridge4').id,
+  'i16_bridge_4',
+  'Legacy bridge4 ids should map to I-16 Bridge 4.',
+)
+
+assert.equal(
+  getBridgePreset('bridge6').id,
+  'i16_bridge_6',
+  'Legacy bridge6 ids should map to I-16 Bridge 6.',
+)
+
+assert.equal(
+  getBridgePreset('bridge9').id,
+  'i16_bridge_9',
+  'Legacy bridge9 ids should map to I-16 Bridge 9.',
 )
 
 assert.deepEqual(
@@ -242,11 +292,11 @@ const bridge4BearingResult = parseBearingLoads(
   {
     bearingPointMap: parseIdRemap(
       bridge4Settings.bearingPointRemapText,
-      'Bridge 4 bearing point remap',
+      'I-16 Bridge 4 bearing point remap',
     ).map,
     bearingPointDeleteSet: parseDeleteFilter(
       bridge4Settings.bearingPointDeleteText,
-      'Bridge 4 bearing point delete filter',
+      'I-16 Bridge 4 bearing point delete filter',
     ).values,
   },
 )
@@ -254,13 +304,13 @@ const bridge4BearingResult = parseBearingLoads(
 assert.deepEqual(
   bridge4BearingResult.validRows.map((row) => row.normalized),
   ['1, 3, X, -1.0'],
-  'Bridge 4 preset should renumber bearing point 10 to 3.',
+  'I-16 Bridge 4 should renumber bearing point 10 to 3.',
 )
 
 assert.equal(
   bridge4BearingResult.filteredRows.length,
   1,
-  'Bridge 4 preset should delete bearing point 7.',
+  'I-16 Bridge 4 should delete bearing point 7.',
 )
 
 const bridge6ColumnResult = parseColumnLoads(
@@ -268,11 +318,11 @@ const bridge6ColumnResult = parseColumnLoads(
   {
     columnNumberMap: parseIdRemap(
       bridge6Settings.columnNumberRemapText,
-      'Bridge 6 column number remap',
+      'I-16 Bridge 6 column number remap',
     ).map,
     columnNumberDeleteSet: parseDeleteFilter(
       bridge6Settings.columnNumberDeleteText,
-      'Bridge 6 column number delete filter',
+      'I-16 Bridge 6 column number delete filter',
     ).values,
   },
 )
@@ -280,13 +330,13 @@ const bridge6ColumnResult = parseColumnLoads(
 assert.deepEqual(
   bridge6ColumnResult.validRows.map((row) => row.normalized),
   ['6, Force, X, 1.0'],
-  'Bridge 6 preset should keep the existing column renumbering behavior.',
+  'I-16 Bridge 6 should keep the existing column renumbering behavior.',
 )
 
 assert.equal(
   bridge6ColumnResult.filteredRows.length,
   1,
-  'Bridge 6 preset should keep the existing column delete behavior.',
+  'I-16 Bridge 6 should keep the existing column delete behavior.',
 )
 
 const settingsRoundTrip = parseTransformSettingsJson(
@@ -331,10 +381,28 @@ assert.equal(
   'Legacy settings JSON with bridgePresetId=create should load as user mode.',
 )
 
+const legacyBridgeImport = parseTransformSettingsJson(
+  JSON.stringify({
+    bridgePresetId: 'bridge6',
+    applyRemaps: true,
+    applyDeleteFilters: true,
+    bearingPointRemapText: bridge6Settings.bearingPointRemapText,
+    columnNumberRemapText: bridge6Settings.columnNumberRemapText,
+    bearingPointDeleteText: bridge6Settings.bearingPointDeleteText,
+    columnNumberDeleteText: bridge6Settings.columnNumberDeleteText,
+  }),
+)
+
+assert.equal(
+  legacyBridgeImport.bridgePresetId,
+  'i16_bridge_6',
+  'Legacy settings JSON with bridgePresetId=bridge6 should load as I-16 Bridge 6.',
+)
+
 assert.deepEqual(
-  createClearedTransformSettings('bridge4'),
+  createClearedTransformSettings('i16_bridge_4'),
   {
-    bridgePresetId: 'bridge4',
+    bridgePresetId: 'i16_bridge_4',
     applyRemaps: false,
     applyDeleteFilters: false,
     bearingPointRemapText: '',

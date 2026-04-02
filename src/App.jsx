@@ -50,7 +50,12 @@ const REMAP_DISPLAY_SEPARATOR = ' | '
 const DEFAULT_TRANSFORM_SETTINGS = createTransformSettingsFromPreset(
   DEFAULT_BRIDGE_PRESET_ID,
 )
-const BRIDGE_PRESET_OPTIONS = ['bridge4', 'bridge6', 'user'].map(
+const BRIDGE_PRESET_OPTIONS = [
+  'i16_bridge_4',
+  'i16_bridge_6',
+  'i16_bridge_9',
+  'user',
+].map(
   (presetId) => BRIDGE_PRESETS[presetId],
 )
 

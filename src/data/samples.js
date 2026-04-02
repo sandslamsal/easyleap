@@ -51,9 +51,9 @@ Moment    Z    7.0    0.5`,
 }
 
 export const BRIDGE_PRESETS = {
-  bridge4: {
-    id: 'bridge4',
-    label: 'Bridge 4',
+  i16_bridge_4: {
+    id: 'i16_bridge_4',
+    label: 'I-16 Bridge 4',
     applyRemaps: true,
     applyDeleteFilters: true,
     remaps: {
@@ -69,9 +69,9 @@ export const BRIDGE_PRESETS = {
       columnNumber: '1-7',
     },
   },
-  bridge6: {
-    id: 'bridge6',
-    label: 'Bridge 6',
+  i16_bridge_6: {
+    id: 'i16_bridge_6',
+    label: 'I-16 Bridge 6',
     applyRemaps: true,
     applyDeleteFilters: true,
     remaps: {
@@ -93,6 +93,24 @@ export const BRIDGE_PRESETS = {
       columnNumber: '1-7, 14-20',
     },
   },
+  i16_bridge_9: {
+    id: 'i16_bridge_9',
+    label: 'I-16 Bridge 9',
+    applyRemaps: true,
+    applyDeleteFilters: true,
+    remaps: {
+      bearingPoint: `10 = 3
+9 = 2
+8 = 1`,
+      columnNumber: `10 = 3
+9 = 2
+8 = 1`,
+    },
+    deletes: {
+      bearingPoint: '1-7',
+      columnNumber: '1-7',
+    },
+  },
   user: {
     id: 'user',
     label: 'User',
@@ -109,7 +127,7 @@ export const BRIDGE_PRESETS = {
   },
 }
 
-export const DEFAULT_BRIDGE_PRESET_ID = 'bridge6'
+export const DEFAULT_BRIDGE_PRESET_ID = 'user'
 
 export const DEFAULT_REMAPS = BRIDGE_PRESETS[DEFAULT_BRIDGE_PRESET_ID].remaps
 
