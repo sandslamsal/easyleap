@@ -188,6 +188,43 @@ assert.deepEqual(
   'Delete filters should parse compact comma-separated integers and ranges.',
 )
 
+const deleteSyntaxExamples = [
+  {
+    input: '1,2,3',
+    expected: ['1', '2', '3'],
+  },
+  {
+    input: '5-10',
+    expected: ['5', '6', '7', '8', '9', '10'],
+  },
+  {
+    input: '1,2,3,6-9',
+    expected: ['1', '2', '3', '6', '7', '8', '9'],
+  },
+  {
+    input: '4-6,10,12-14',
+    expected: ['4', '5', '6', '10', '12', '13', '14'],
+  },
+  {
+    input: '1,2,3,4,9-16',
+    expected: ['1', '2', '3', '4', '9', '10', '11', '12', '13', '14', '15', '16'],
+  },
+]
+
+deleteSyntaxExamples.forEach(({ input, expected }) => {
+  assert.deepEqual(
+    [...parseDeleteFilter(input, 'Delete filter').values],
+    expected,
+    `Delete filter syntax should parse "${input}".`,
+  )
+})
+
+assert.deepEqual(
+  [...parseDeleteFilter(' 1, 2,2, 4-6, 6 ', 'Delete filter').values],
+  ['1', '2', '4', '5', '6'],
+  'Delete filters should ignore extra spaces and remove duplicates automatically.',
+)
+
 assert.equal(
   DEFAULT_BRIDGE_PRESET_ID,
   'user',

@@ -97,6 +97,12 @@
   box-shadow: 0 0 0 4px rgba(11, 107, 99, 0.12);
 }
 
+.field-input::placeholder,
+.load-textarea::placeholder {
+  color: var(--text-soft);
+  opacity: 0.9;
+}
+
 .field-help {
   color: var(--text-soft);
   font-size: 0.88rem;

@@ -235,7 +235,7 @@ function App() {
     {
       id: 'bearingPointRemap',
       label: 'Bearing Point Remap',
-      placeholder: `13 = 6${REMAP_DISPLAY_SEPARATOR}12 = 5`,
+      placeholder: 'e.g. 10=3, 9=2, 8=1',
       value: bearingPointRemapText,
       displayValue: toSingleLineSettingDisplay(
         bearingPointRemapText,
@@ -251,7 +251,7 @@ function App() {
     {
       id: 'columnNumberRemap',
       label: 'Column Number Remap',
-      placeholder: `13 = 6${REMAP_DISPLAY_SEPARATOR}12 = 5`,
+      placeholder: 'e.g. 10=3, 9=2, 8=1',
       value: columnNumberRemapText,
       displayValue: toSingleLineSettingDisplay(
         columnNumberRemapText,
@@ -270,7 +270,7 @@ function App() {
     {
       id: 'bearingPointDelete',
       label: 'Bearing Point Delete Filter',
-      placeholder: '1-7, 14-20',
+      placeholder: 'e.g. 1,2,3,4,9-16',
       value: bearingPointDeleteText,
       displayValue: toSingleLineSettingDisplay(bearingPointDeleteText, ', '),
       result: deleteResults.bearingPoint,
@@ -283,7 +283,7 @@ function App() {
     {
       id: 'columnNumberDelete',
       label: 'Column Number Delete Filter',
-      placeholder: '1-7, 14-20',
+      placeholder: 'e.g. 1,2,3,4,9-16',
       value: columnNumberDeleteText,
       displayValue: toSingleLineSettingDisplay(columnNumberDeleteText, ', '),
       result: deleteResults.columnNumber,
