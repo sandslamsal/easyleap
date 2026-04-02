@@ -49,7 +49,7 @@ const EMPTY_DELETE_SET = new Set()
 const DEFAULT_TRANSFORM_SETTINGS = createTransformSettingsFromPreset(
   DEFAULT_BRIDGE_PRESET_ID,
 )
-const BRIDGE_PRESET_OPTIONS = ['bridge4', 'bridge6', 'create'].map(
+const BRIDGE_PRESET_OPTIONS = ['bridge4', 'bridge6', 'user'].map(
   (presetId) => BRIDGE_PRESETS[presetId],
 )
 
@@ -87,7 +87,6 @@ const SECTION_META = {
 function App() {
   const settingsImportRef = useRef(null)
   const [fileName, setFileName] = useState('leap-loads')
-  const [description, setDescription] = useState('')
   const [bearingText, setBearingText] = useState('')
   const [bearingLiveLoads, setBearingLiveLoads] = useState(false)
   const [columnText, setColumnText] = useState('')
@@ -197,22 +196,22 @@ function App() {
     {
       id: 'bearingPointRemap',
       label: 'Bearing Point Remap',
-      placeholder: '13 = 6\n12 = 5\n11 = 4\n10 = 3\n9 = 2\n8 = 1',
+      placeholder: '13 = 6',
       value: bearingPointRemapText,
       result: remapResults.bearingPoint,
       countLabel: 'Rules',
-      textareaClassName: 'remap-textarea-small',
-      rows: 5,
+      textareaClassName: 'remap-textarea-single-line',
+      rows: 1,
     },
     {
       id: 'columnNumberRemap',
       label: 'Column Number Remap',
-      placeholder: '13 = 6\n12 = 5\n11 = 4\n10 = 3\n9 = 2\n8 = 1',
+      placeholder: '13 = 6',
       value: columnNumberRemapText,
       result: remapResults.columnNumber,
       countLabel: 'Rules',
-      textareaClassName: 'remap-textarea-small',
-      rows: 5,
+      textareaClassName: 'remap-textarea-single-line',
+      rows: 1,
     },
   ]
 
@@ -224,8 +223,8 @@ function App() {
       value: bearingPointDeleteText,
       result: deleteResults.bearingPoint,
       countLabel: 'Values',
-      textareaClassName: 'remap-textarea-compact',
-      rows: 2,
+      textareaClassName: 'remap-textarea-single-line',
+      rows: 1,
     },
     {
       id: 'columnNumberDelete',
@@ -234,8 +233,8 @@ function App() {
       value: columnNumberDeleteText,
       result: deleteResults.columnNumber,
       countLabel: 'Values',
-      textareaClassName: 'remap-textarea-compact',
-      rows: 2,
+      textareaClassName: 'remap-textarea-single-line',
+      rows: 1,
     },
   ]
 
@@ -489,7 +488,6 @@ function App() {
 
   const handleClearAll = () => {
     setFileName('leap-loads')
-    setDescription('')
     setBearingText('')
     setBearingLiveLoads(false)
     setColumnText('')
@@ -603,21 +601,6 @@ function App() {
             </span>
           </label>
 
-          <label className="field">
-            <span className="field-label">Optional load case / description</span>
-            <input
-              className="field-input"
-              type="text"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Service II, Pier 3, Stage 1"
-            />
-            <span className="field-help">
-              Kept for your workflow notes only and not written into the TXT
-              export.
-            </span>
-          </label>
-
           <div className="action-cluster">
             <button className="button button-primary" type="button" onClick={handleGenerate}>
               <WandSparkles size={16} />
@@ -653,7 +636,7 @@ function App() {
       </section>
 
       <RemapSettings
-        title="Bridge Setting"
+        title={`Bridge Setting (${activeBridgePreset.label})`}
         presetId={bridgePresetId}
         presetOptions={BRIDGE_PRESET_OPTIONS}
         presetLabel="Bridge"
@@ -710,7 +693,6 @@ function App() {
 
         {activeTab === 'preview' ? (
           <PreviewPanel
-            description={description}
             fileName={resolvedFileName}
             generatedAt={generatedMeta?.generatedAt ?? null}
             output={generatedOutput}

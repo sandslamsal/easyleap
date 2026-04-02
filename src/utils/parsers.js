@@ -31,43 +31,83 @@ function normalizeLoadType(loadType) {
   return LOAD_TYPE_CASE_MAP.get(normalized.toLowerCase()) ?? normalized
 }
 
-function transformColumnValues(loadType, values) {
-  const removedIndexes = new Set()
+function removeFieldsByOneBasedPosition(fields, positionsToDelete) {
+  const nextFields = [...fields]
 
-  // Drop an extra pasted 8th overall input column.
-  if (values.length >= 5) {
-    removedIndexes.add(4)
-  }
+  ;[...positionsToDelete]
+    .sort((left, right) => right - left)
+    .forEach((position) => {
+      const index = position - 1
 
-  if (loadType === 'UDL' && values.length >= 4) {
-    // For column UDL rows, the original 6th overall input column is omitted.
-    removedIndexes.add(2)
-  }
+      if (index >= 0 && index < nextFields.length) {
+        nextFields.splice(index, 1)
+      }
+    })
 
-  return values.filter((_, index) => !removedIndexes.has(index))
+  return nextFields
 }
 
-function transformCapValues(loadType, values) {
-  const removedIndexes = new Set()
+function cleanupNormalizedColumnFields(fields) {
+  const loadType = fields[1]?.toLowerCase()
+  const positionsToDelete = new Set()
 
-  // Drop an extra pasted 8th overall input column.
-  if (values.length >= 6) {
-    removedIndexes.add(5)
+  // Preserve the earlier behavior that ignores an extra pasted 8th field.
+  positionsToDelete.add(8)
+
+  if (loadType === 'udl') {
+    // UDL rows omit normalized fields 6 and 7.
+    positionsToDelete.add(6)
+    positionsToDelete.add(7)
   }
 
-  if (loadType === 'Force' && values.length >= 5) {
-    // Force rows omit the original 6th and 7th overall input columns.
-    removedIndexes.add(3)
-    removedIndexes.add(4)
+  if (loadType === 'pressure') {
+    // Pressure rows omit normalized field 6.
+    positionsToDelete.add(6)
   }
 
-  if (loadType === 'UDL' && values.length >= 5) {
-    // UDL rows omit the original 3rd and 6th overall input columns.
-    removedIndexes.add(0)
-    removedIndexes.add(3)
+  if (loadType === 'settlement') {
+    // Settlement rows omit normalized fields 5, 6, and 7.
+    positionsToDelete.add(5)
+    positionsToDelete.add(6)
+    positionsToDelete.add(7)
   }
 
-  return values.filter((_, index) => !removedIndexes.has(index))
+  if (loadType === 'moment') {
+    // Moment rows omit normalized fields 6 and 7.
+    positionsToDelete.add(6)
+    positionsToDelete.add(7)
+  }
+
+  return removeFieldsByOneBasedPosition(fields, positionsToDelete)
+}
+
+function cleanupNormalizedCapFields(fields) {
+  const loadType = fields[0]?.toLowerCase()
+  const positionsToDelete = new Set()
+
+  // Preserve the earlier behavior that ignores an extra pasted 8th field.
+  positionsToDelete.add(8)
+
+  if (loadType === 'force') {
+    // Force rows omit normalized fields 6 and 7.
+    positionsToDelete.add(6)
+    positionsToDelete.add(7)
+  }
+
+  if (loadType === 'udl') {
+    // UDL rows omit normalized fields 3 and 6.
+    positionsToDelete.add(3)
+    positionsToDelete.add(6)
+  }
+
+  if (loadType === 'moment') {
+    // Moment rows omit normalized fields 3, 6, and 7.
+    positionsToDelete.add(3)
+    positionsToDelete.add(6)
+    positionsToDelete.add(7)
+  }
+
+  return removeFieldsByOneBasedPosition(fields, positionsToDelete)
 }
 
 function applyIntegerRemap(token, remapMap) {
@@ -310,10 +350,7 @@ function parseColumnRow(tokens, options = {}) {
     columnId.remainingTokens.slice(0, directionIndex).join(' '),
   )
   const direction = columnId.remainingTokens[directionIndex]
-  const values = transformColumnValues(
-    loadType,
-    columnId.remainingTokens.slice(directionIndex + 1),
-  )
+  const values = columnId.remainingTokens.slice(directionIndex + 1)
   const columnNumber = applyIntegerRemap(
     columnId.columnNumber,
     options.columnNumberMap,
@@ -331,14 +368,21 @@ function parseColumnRow(tokens, options = {}) {
     return { error: 'Column load values after direction must be numeric.' }
   }
 
+  const normalizedFields = [
+    columnNumber,
+    loadType,
+    toUpperDirection(direction),
+    ...values,
+  ]
+  const cleanedFields = cleanupNormalizedColumnFields(normalizedFields)
+
+  if (cleanedFields.length < 4) {
+    return { error: 'Column cleanup removed all numeric values from this row.' }
+  }
+
   return {
-    fields: [columnNumber, loadType, toUpperDirection(direction), ...values],
-    normalized: formatFields([
-      columnNumber,
-      loadType,
-      toUpperDirection(direction),
-      ...values,
-    ]),
+    fields: cleanedFields,
+    normalized: formatFields(cleanedFields),
   }
 }
 
@@ -359,7 +403,7 @@ function parseCapRow(tokens) {
 
   const loadType = normalizeLoadType(tokens.slice(0, directionIndex).join(' '))
   const direction = tokens[directionIndex]
-  const values = transformCapValues(loadType, tokens.slice(directionIndex + 1))
+  const values = tokens.slice(directionIndex + 1)
 
   if (!loadType) {
     return { error: 'Cap load type is missing.' }
@@ -373,9 +417,16 @@ function parseCapRow(tokens) {
     return { error: 'Cap load values after direction must be numeric.' }
   }
 
+  const normalizedFields = [loadType, toUpperDirection(direction), ...values]
+  const cleanedFields = cleanupNormalizedCapFields(normalizedFields)
+
+  if (cleanedFields.length < 3) {
+    return { error: 'Cap cleanup removed all numeric values from this row.' }
+  }
+
   return {
-    fields: [loadType, toUpperDirection(direction), ...values],
-    normalized: formatFields([loadType, toUpperDirection(direction), ...values]),
+    fields: cleanedFields,
+    normalized: formatFields(cleanedFields),
   }
 }
 

@@ -57,7 +57,7 @@
 
 .toolbar-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(290px, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1.05fr);
   gap: 18px;
   align-items: start;
 }
@@ -358,18 +358,22 @@
 }
 
 .remap-textarea {
-  min-height: 116px;
+  height: 50px;
+  min-height: 50px;
+  max-height: 50px;
   margin-top: 12px;
-  padding: 14px;
-  line-height: 1.5;
+  padding: 12px 14px;
+  line-height: 1.45;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre;
 }
 
-.remap-textarea-small {
-  min-height: 120px;
-}
-
-.remap-textarea-compact {
-  min-height: 88px;
+.remap-textarea-single-line {
+  height: 50px;
+  min-height: 50px;
+  max-height: 50px;
 }
 
 .remap-note {
@@ -690,7 +694,7 @@
 
 .preview-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 20px;
 }

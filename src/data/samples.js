@@ -93,9 +93,9 @@ export const BRIDGE_PRESETS = {
       columnNumber: '1-7, 14-20',
     },
   },
-  create: {
-    id: 'create',
-    label: 'Create',
+  user: {
+    id: 'user',
+    label: 'User',
     applyRemaps: true,
     applyDeleteFilters: true,
     remaps: {

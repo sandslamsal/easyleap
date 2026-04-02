@@ -4,6 +4,7 @@ import {
 } from '../data/samples.js'
 
 const SETTINGS_JSON_VERSION = 1
+const LEGACY_PRESET_ID_MAP = new Map([['create', 'user']])
 
 function requireString(value, fieldName) {
   if (typeof value !== 'string') {
@@ -22,7 +23,10 @@ function requireBoolean(value, fieldName) {
 }
 
 export function getBridgePreset(presetId = DEFAULT_BRIDGE_PRESET_ID) {
-  return BRIDGE_PRESETS[presetId] ?? BRIDGE_PRESETS[DEFAULT_BRIDGE_PRESET_ID]
+  const normalizedPresetId = LEGACY_PRESET_ID_MAP.get(presetId) ?? presetId
+  return (
+    BRIDGE_PRESETS[normalizedPresetId] ?? BRIDGE_PRESETS[DEFAULT_BRIDGE_PRESET_ID]
+  )
 }
 
 export function createTransformSettingsFromPreset(

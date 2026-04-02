@@ -1,12 +1,6 @@
 import { AlertTriangle, CalendarClock, FileText, Info } from 'lucide-react'
 
-export function PreviewPanel({
-  description,
-  fileName,
-  generatedAt,
-  output,
-  warnings,
-}) {
+export function PreviewPanel({ fileName, generatedAt, output, warnings }) {
   const generatedLabel = generatedAt
     ? generatedAt.toLocaleString([], {
         dateStyle: 'medium',
@@ -33,10 +27,6 @@ export function PreviewPanel({
         <div className="preview-meta-card">
           <span>Output file</span>
           <strong>{fileName}</strong>
-        </div>
-        <div className="preview-meta-card">
-          <span>Load case note</span>
-          <strong>{description || 'Not provided'}</strong>
         </div>
         <div className="preview-meta-card">
           <span>Generated</span>

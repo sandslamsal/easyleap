@@ -75,6 +75,7 @@ function SettingsGroup({
               <textarea
                 className={`load-textarea remap-textarea ${field.textareaClassName ?? ''}`}
                 rows={field.rows ?? 4}
+                wrap="off"
                 value={field.value}
                 onChange={(event) => onChange(field.id, event.target.value)}
                 placeholder={field.placeholder}
@@ -181,22 +182,22 @@ export function RemapSettings({
 
         <div className="transform-stack">
           <SettingsGroup
-            title="Renumber Before Export"
-            icon={ArrowRightLeft}
-            enabled={remapEnabled}
-            toggleLabel="Apply remaps during generation"
-            onToggle={onRemapToggle}
-            fields={remapFields}
-            onChange={onChange}
-          />
-
-          <SettingsGroup
             title="Delete Before Export"
             icon={Filter}
             enabled={deleteEnabled}
             toggleLabel="Apply delete filters during generation"
             onToggle={onDeleteToggle}
             fields={deleteFields}
+            onChange={onChange}
+          />
+
+          <SettingsGroup
+            title="Renumber Before Export"
+            icon={ArrowRightLeft}
+            enabled={remapEnabled}
+            toggleLabel="Apply remaps during generation"
+            onToggle={onRemapToggle}
+            fields={remapFields}
             onChange={onChange}
           />
         </div>

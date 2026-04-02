@@ -26,8 +26,8 @@ const columnExample = parseColumnLoads(
 
 assert.equal(
   columnExample,
-  '6, UDL, X, -0.0312, 0.7464, 0.9743',
-  'Column UDL rows should drop the 6th input column.',
+  '6, UDL, X, -0.0312, 0.7464',
+  'Column UDL rows should drop normalized fields 6 and 7.',
 )
 
 const columnExampleWithEighth = parseColumnLoads(
@@ -36,8 +36,28 @@ const columnExampleWithEighth = parseColumnLoads(
 
 assert.equal(
   columnExampleWithEighth,
-  '6, UDL, X, -0.0312, 0.7464, 0.9743',
-  'Column rows should also drop an extra 8th input column.',
+  '6, UDL, X, -0.0312, 0.7464',
+  'Column rows should also drop an extra 8th normalized field.',
+)
+
+const columnCleanupExamples = parseColumnLoads(
+  [
+    '4 Pressure Z 5.0 0.0 1.0 9.0',
+    '5 Settlement X 7.0 8.0 9.0 10.0',
+    '6 Moment Y 1.0 2.0 3.0 4.0',
+    '7 Trapezoidal X 6.0 0.0 0.0 1.0',
+  ].join('\n'),
+).validRows.map((row) => row.normalized)
+
+assert.deepEqual(
+  columnCleanupExamples,
+  [
+    '4, Pressure, Z, 5.0, 0.0, 9.0',
+    '5, Settlement, X, 7.0',
+    '6, Moment, Y, 1.0, 2.0',
+    '7, Trapezoidal, X, 6.0, 0.0, 0.0, 1.0',
+  ],
+  'Column cleanup rules should apply by normalized field position.',
 )
 
 const capExamples = parseCapLoads(
@@ -63,6 +83,16 @@ assert.deepEqual(
   capExamplesWithEighth,
   ['Force, X, 0.00, -1.2, 0.5', 'UDL, Z, -0.04, 0.00, 1.00'],
   'Cap rows should also drop an extra 8th input column.',
+)
+
+const capMomentExample = parseCapLoads(
+  'Moment Z 7.0 0.5 0.25 0.125 0.0625',
+).validRows[0]?.normalized
+
+assert.equal(
+  capMomentExample,
+  'Moment, Z, 0.5, 0.25',
+  'Cap Moment rows should drop normalized fields 3, 6, and 7.',
 )
 
 const liveBearingText = [
@@ -155,7 +185,7 @@ assert.deepEqual(
 
 const bridge6Settings = createTransformSettingsFromPreset('bridge6')
 const bridge4Settings = createTransformSettingsFromPreset('bridge4')
-const createSettings = createTransformSettingsFromPreset('create')
+const userSettings = createTransformSettingsFromPreset('user')
 
 assert.equal(
   bridge6Settings.bearingPointDeleteText,
@@ -194,9 +224,9 @@ assert.equal(
 )
 
 assert.deepEqual(
-  createSettings,
+  userSettings,
   {
-    bridgePresetId: 'create',
+    bridgePresetId: 'user',
     applyRemaps: true,
     applyDeleteFilters: true,
     bearingPointRemapText: '',
@@ -204,7 +234,7 @@ assert.deepEqual(
     bearingPointDeleteText: '',
     columnNumberDeleteText: '',
   },
-  'Create mode should start as a blank custom settings preset.',
+  'User mode should start as a blank custom settings preset.',
 )
 
 const bridge4BearingResult = parseBearingLoads(
@@ -261,7 +291,7 @@ assert.equal(
 
 const settingsRoundTrip = parseTransformSettingsJson(
   serializeTransformSettings({
-    ...createSettings,
+    ...userSettings,
     bearingPointRemapText: '16 = 4',
     columnNumberRemapText: '16 = 4',
     bearingPointDeleteText: '2,4-6',
@@ -272,7 +302,7 @@ const settingsRoundTrip = parseTransformSettingsJson(
 assert.deepEqual(
   settingsRoundTrip,
   {
-    bridgePresetId: 'create',
+    bridgePresetId: 'user',
     applyRemaps: true,
     applyDeleteFilters: true,
     bearingPointRemapText: '16 = 4',
@@ -281,6 +311,24 @@ assert.deepEqual(
     columnNumberDeleteText: '3,7-8',
   },
   'Settings JSON export/import should preserve the selected bridge mode and values.',
+)
+
+const legacyCreateImport = parseTransformSettingsJson(
+  JSON.stringify({
+    bridgePresetId: 'create',
+    applyRemaps: true,
+    applyDeleteFilters: false,
+    bearingPointRemapText: '',
+    columnNumberRemapText: '',
+    bearingPointDeleteText: '',
+    columnNumberDeleteText: '',
+  }),
+)
+
+assert.equal(
+  legacyCreateImport.bridgePresetId,
+  'user',
+  'Legacy settings JSON with bridgePresetId=create should load as user mode.',
 )
 
 assert.deepEqual(
@@ -305,10 +353,20 @@ const rebuiltWs9 = buildLeapTxt({
   cap: parseCapLoads(getRows(ws9Sections[2])),
 }).output
 
+const expectedRebuiltWs9 = [
+  ws9Sections[0],
+  ['Column Loads', '1, Force, X, 1.1, 1.0', '1, UDL, Z, 3.0, 0', '1, Pressure, Z, 5.0, 0'].join(
+    '\n',
+  ),
+  ['Cap Loads', 'Force, X, 1.0, 2.0, 0.5', 'UDL, Y, 0, 1.0', 'Moment, Z, 0.5'].join(
+    '\n',
+  ),
+].join('\n\n')
+
 assert.equal(
   rebuiltWs9,
-  ws9Text,
-  'Rebuilt output should exactly match the known-good WS9 fixture.',
+  expectedRebuiltWs9,
+  'Rebuilt output should match the updated cleanup rules and LEAP TXT formatting.',
 )
 
 console.log('Parser rules verified successfully.')
