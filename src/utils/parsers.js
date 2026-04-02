@@ -4,6 +4,8 @@ const DIRECTION_PATTERN = /^[XYZ]$/i
 const LIVE_LOAD_TAG_PATTERN = /^[TL]$/i
 const MAX_COLUMN_FIELDS = 7
 const MAX_CAP_FIELDS = 7
+const MAX_COLUMN_VALUE_COUNT = MAX_COLUMN_FIELDS - 3
+const MAX_CAP_VALUE_COUNT = MAX_CAP_FIELDS - 2
 
 const LOAD_TYPE_CASE_MAP = new Map([
   ['force', 'Force'],
@@ -361,7 +363,12 @@ function parseColumnRow(tokens, options = {}) {
     columnId.remainingTokens.slice(0, directionIndex).join(' '),
   )
   const direction = columnId.remainingTokens[directionIndex]
-  const values = columnId.remainingTokens.slice(directionIndex + 1)
+  // Ignore any pasted values beyond the supported normalized column structure
+  // before validation so trailing Excel/PDF columns do not trigger row errors.
+  const values = truncateFields(
+    columnId.remainingTokens.slice(directionIndex + 1),
+    MAX_COLUMN_VALUE_COUNT,
+  )
   const columnNumber = applyIntegerRemap(
     columnId.columnNumber,
     options.columnNumberMap,
@@ -417,7 +424,12 @@ function parseCapRow(tokens) {
 
   const loadType = normalizeLoadType(tokens.slice(0, directionIndex).join(' '))
   const direction = tokens[directionIndex]
-  const values = tokens.slice(directionIndex + 1)
+  // Ignore any pasted values beyond the supported normalized cap structure
+  // before validation so trailing Excel/PDF columns do not trigger row errors.
+  const values = truncateFields(
+    tokens.slice(directionIndex + 1),
+    MAX_CAP_VALUE_COUNT,
+  )
 
   if (!loadType) {
     return { error: 'Cap load type is missing.' }

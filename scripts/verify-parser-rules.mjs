@@ -55,6 +55,22 @@ assert.equal(
   'Column rows should ignore any fields beyond the supported structure.',
 )
 
+const columnExampleWithTextBeyondSupport = parseColumnLoads(
+  'Col 6 UDL X -0.0312 0.7464 0.000 0.9743 NOTE EXTRA',
+)
+
+assert.equal(
+  columnExampleWithTextBeyondSupport.invalidRows.length,
+  0,
+  'Column rows should not fail validation because of extra trailing pasted columns.',
+)
+
+assert.equal(
+  columnExampleWithTextBeyondSupport.validRows[0]?.normalized,
+  '6, UDL, X, -0.0312, 0.7464',
+  'Column rows should ignore non-numeric columns beyond the supported structure.',
+)
+
 const columnCleanupExamples = parseColumnLoads(
   [
     '4 Pressure Z 5.0 0.0 1.0 9.0',
@@ -111,6 +127,22 @@ assert.deepEqual(
   capExamplesBeyondEighth,
   ['Force, X, 0.00, -1.2, 0.5', 'Moment, Y, 12, 3'],
   'Cap rows should ignore any fields beyond the supported structure.',
+)
+
+const capExampleWithTextBeyondSupport = parseCapLoads(
+  'Moment Y 0 12 3 4 5 NOTE EXTRA',
+)
+
+assert.equal(
+  capExampleWithTextBeyondSupport.invalidRows.length,
+  0,
+  'Cap rows should not fail validation because of extra trailing pasted columns.',
+)
+
+assert.equal(
+  capExampleWithTextBeyondSupport.validRows[0]?.normalized,
+  'Moment, Y, 12, 3',
+  'Cap rows should ignore non-numeric columns beyond the supported structure.',
 )
 
 const capMomentExample = parseCapLoads(
