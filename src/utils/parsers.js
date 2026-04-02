@@ -167,6 +167,13 @@ function tokenizeCompactDeleteEntries(rawLine) {
     .filter(Boolean)
 }
 
+function tokenizeRemapEntries(rawLine) {
+  return rawLine
+    .split(/[|,]/)
+    .map(cleanToken)
+    .filter(Boolean)
+}
+
 function parseRows(text, rowParser) {
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
   const validRows = []
@@ -443,24 +450,27 @@ export function parseIdRemap(text, label) {
     }
 
     sourceRowCount += 1
-    const matches = rawLine.match(/-?\d+/g) ?? []
 
-    if (matches.length !== 2) {
-      invalidRows.push({
+    tokenizeRemapEntries(rawLine).forEach((entry) => {
+      const matches = entry.match(/-?\d+/g) ?? []
+
+      if (matches.length !== 2) {
+        invalidRows.push({
+          lineNumber: index + 1,
+          rawLine: rawLine.trim(),
+          error: `${label} rules must contain exactly one source integer and one target integer.`,
+        })
+        return
+      }
+
+      const [from, to] = matches
+      map.set(from, to)
+      validRows.push({
         lineNumber: index + 1,
         rawLine: rawLine.trim(),
-        error: `${label} rules must contain exactly one source integer and one target integer.`,
+        from,
+        to,
       })
-      return
-    }
-
-    const [from, to] = matches
-    map.set(from, to)
-    validRows.push({
-      lineNumber: index + 1,
-      rawLine: rawLine.trim(),
-      from,
-      to,
     })
   })
 

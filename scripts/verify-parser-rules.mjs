@@ -225,6 +225,43 @@ assert.deepEqual(
   'Delete filters should ignore extra spaces and remove duplicates automatically.',
 )
 
+const compactRemapExamples = [
+  {
+    input: '10=3, 9=2, 8=1',
+    expectedEntries: [
+      ['10', '3'],
+      ['9', '2'],
+      ['8', '1'],
+    ],
+  },
+  {
+    input: '10 = 3 | 9 = 2 | 8 = 1',
+    expectedEntries: [
+      ['10', '3'],
+      ['9', '2'],
+      ['8', '1'],
+    ],
+  },
+  {
+    input: '10=3, 9 = 2 | 8=1',
+    expectedEntries: [
+      ['10', '3'],
+      ['9', '2'],
+      ['8', '1'],
+    ],
+  },
+]
+
+compactRemapExamples.forEach(({ input, expectedEntries }) => {
+  const result = parseIdRemap(input, 'Remap')
+
+  assert.deepEqual(
+    [...result.map.entries()],
+    expectedEntries,
+    `Remap syntax should parse "${input}".`,
+  )
+})
+
 assert.equal(
   DEFAULT_BRIDGE_PRESET_ID,
   'user',

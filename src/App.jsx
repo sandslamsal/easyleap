@@ -73,10 +73,6 @@ function toSingleLineSettingDisplay(value, separator) {
 
 function fromSingleLineRemapInput(value) {
   return normalizeLineEndings(value)
-    .split(/\s*(?:\||;|,)\s*|\n+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .join('\n')
 }
 
 function fromSingleLineDeleteInput(value) {
@@ -251,7 +247,7 @@ function App() {
     {
       id: 'columnNumberRemap',
       label: 'Column Number Remap',
-      placeholder: 'e.g. 10=3, 9=2, 8=1',
+      placeholder: 'e.g. 10=3 | 9=2 | 8=1',
       value: columnNumberRemapText,
       displayValue: toSingleLineSettingDisplay(
         columnNumberRemapText,
