@@ -16,10 +16,20 @@ export async function extractBearingReactions(file) {
 
   try {
     const pagesItems = []
+    let modelName = ''
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
       const page = await doc.getPage(pageNumber)
       const content = await page.getTextContent()
       pagesItems.push(content.items)
+      // The report footer carries the LEAP model file (e.g.
+      // "File Name: SR25_Span2_...lbcx"), a useful span hint.
+      if (!modelName) {
+        const joined = content.items.map((item) => item.str).join(' ')
+        const match = joined.match(/File Name:\s*([^\s]+\.lbcx)/i)
+        if (match) {
+          modelName = match[1]
+        }
+      }
       page.cleanup()
     }
 
@@ -28,6 +38,7 @@ export async function extractBearingReactions(file) {
 
     return {
       name: file.name,
+      modelName,
       pageCount: doc.numPages,
       beamCount: table.beams.length,
       envelopes,

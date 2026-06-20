@@ -23,6 +23,7 @@ import {
   LOAD_CASE_DEFS,
   buildCaseTxt,
   computeLoadCases,
+  guessSpanFromText,
 } from '../utils/loadCases.js'
 
 let fileCounter = 0
@@ -74,7 +75,6 @@ export function SuperstructureExtractor() {
   const [files, setFiles] = useState([])
   const [isDragging, setIsDragging] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
-  const [caseSource, setCaseSource] = useState('envelope')
   const [bearingLine, setBearingLine] = useState('1')
   const [bothSides, setBothSides] = useState(true)
 
@@ -97,19 +97,51 @@ export function SuperstructureExtractor() {
     [fileTables],
   )
 
-  // Source table for the DC/DW case files: the governing max envelope by
-  // default, or a specific uploaded stage file when selected.
-  const caseTable = useMemo(() => {
-    if (caseSource !== 'envelope') {
-      const match = doneFiles.find((file) => file.id === caseSource)
-      if (match) {
-        return match.result.table
-      }
-    }
-    return envelopeTable
-  }, [caseSource, doneFiles, envelopeTable])
+  const startLine = Number.parseInt(bearingLine, 10) || 1
 
-  const loadCases = useMemo(() => computeLoadCases(caseTable), [caseTable])
+  // Group the parsed files by their Span tag. Each span is enveloped only
+  // within its own files, so two separate single-span LEAP models (both
+  // reporting "Span 1") never contaminate each other. Span N maps to the
+  // bearing line at startLine + (N - 1).
+  const caseSpans = useMemo(() => {
+    const tags = [...new Set(doneFiles.map((file) => file.span ?? 1))].sort(
+      (a, b) => a - b,
+    )
+    return tags.map((tag, index) => {
+      const tables = doneFiles
+        .filter((file) => (file.span ?? 1) === tag)
+        .map((file) => file.result.table)
+      const table = buildEnvelopeTable(tables)
+      const cases = computeLoadCases(table)
+      return {
+        tag,
+        line: startLine + index,
+        fileCount: tables.length,
+        beams: cases.beams,
+        totals: cases.totals,
+      }
+    })
+  }, [doneFiles, startLine])
+
+  const multiSpan = caseSpans.length > 1
+
+  // One bearing line per span. For a single span, the "both sides" toggle
+  // duplicates it onto a second line (identical values).
+  const lineSpecs = useMemo(() => {
+    const specs = caseSpans.map((span) => ({
+      line: span.line,
+      beams: span.beams,
+      totals: span.totals,
+    }))
+    if (caseSpans.length === 1 && bothSides) {
+      specs.push({
+        line: startLine + 1,
+        beams: caseSpans[0].beams,
+        totals: caseSpans[0].totals,
+      })
+    }
+    return specs
+  }, [caseSpans, bothSides, startLine])
 
   const isParsing = files.some((file) => file.status === 'parsing')
   const hasResults = doneFiles.length > 0
@@ -134,7 +166,13 @@ export function SuperstructureExtractor() {
 
     const queued = pdfs.map((file) => {
       fileCounter += 1
-      return { id: `f${fileCounter}`, name: file.name, status: 'parsing', file }
+      return {
+        id: `f${fileCounter}`,
+        name: file.name,
+        status: 'parsing',
+        file,
+        span: guessSpanFromText(file.name),
+      }
     })
 
     setFiles((current) => [...current, ...queued])
@@ -149,7 +187,13 @@ export function SuperstructureExtractor() {
             file: undefined,
           })
         } else {
-          updateFile(entry.id, { status: 'done', result, file: undefined })
+          updateFile(entry.id, {
+            status: 'done',
+            result,
+            file: undefined,
+            // Refine the span guess now that the internal model name is known.
+            span: guessSpanFromText(`${entry.name} ${result.modelName ?? ''}`),
+          })
         }
       } catch (error) {
         updateFile(entry.id, {
@@ -210,11 +254,6 @@ export function SuperstructureExtractor() {
     }
   }
 
-  const startLine = Number.parseInt(bearingLine, 10) || 1
-  const caseOptions = {
-    bearingLines: bothSides ? [startLine, startLine + 1] : [startLine],
-  }
-
   const downloadTextFile = (filename, content) => {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const objectUrl = URL.createObjectURL(blob)
@@ -226,15 +265,13 @@ export function SuperstructureExtractor() {
   }
 
   const handleDownloadCase = (def) => {
-    const content = buildCaseTxt(caseTable, loadCases.totals, def, caseOptions)
-    downloadTextFile(`${def.key}.txt`, content)
+    downloadTextFile(`${def.key}.txt`, buildCaseTxt(def, lineSpecs))
     setActionMessage(`Downloaded ${def.key}.txt.`)
   }
 
   const handleCopyCase = async (def) => {
     try {
-      const content = buildCaseTxt(caseTable, loadCases.totals, def, caseOptions)
-      await navigator.clipboard.writeText(content)
+      await navigator.clipboard.writeText(buildCaseTxt(def, lineSpecs))
       setActionMessage(`Copied ${def.key} bearing loads to the clipboard.`)
     } catch {
       setActionMessage('Clipboard copy failed in this browser session.')
@@ -298,6 +335,19 @@ export function SuperstructureExtractor() {
                     `${file.result.beamCount} beam(s) · ${file.result.pageCount} pages`
                   )}
                 </span>
+                {file.status === 'done' ? (
+                  <select
+                    className="file-span"
+                    value={file.span ?? 1}
+                    onChange={(event) =>
+                      updateFile(file.id, { span: Number(event.target.value) })
+                    }
+                    aria-label={`Cap span for ${file.name}`}
+                  >
+                    <option value={1}>Span 1</option>
+                    <option value={2}>Span 2</option>
+                  </select>
+                ) : null}
                 <button
                   type="button"
                   className="file-remove"
@@ -390,21 +440,7 @@ export function SuperstructureExtractor() {
 
           <div className="case-controls">
             <label className="case-field">
-              <span>Source reactions</span>
-              <select
-                value={caseSource}
-                onChange={(event) => setCaseSource(event.target.value)}
-              >
-                <option value="envelope">Max Envelope (governing)</option>
-                {doneFiles.map((file) => (
-                  <option key={file.id} value={file.id}>
-                    {file.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="case-field">
-              <span>Bearing line</span>
+              <span>Bearing line{multiSpan ? ' (Span 1)' : ''}</span>
               <input
                 type="number"
                 min="1"
@@ -413,46 +449,61 @@ export function SuperstructureExtractor() {
                 onChange={(event) => setBearingLine(event.target.value)}
               />
             </label>
-            <label className="section-toggle case-toggle">
-              <input
-                type="checkbox"
-                checked={bothSides}
-                onChange={(event) => setBothSides(event.target.checked)}
-              />
-              <span>
-                Both sides of cap (duplicate to line {startLine + 1})
+            {multiSpan ? (
+              <span className="case-note">
+                Two spans tagged. Span 1 goes on line {startLine}, Span 2 on
+                line {startLine + 1}. Tag files with the selector on each row.
               </span>
-            </label>
+            ) : (
+              <label className="section-toggle case-toggle">
+                <input
+                  type="checkbox"
+                  checked={bothSides}
+                  onChange={(event) => setBothSides(event.target.checked)}
+                />
+                <span>
+                  Both sides of cap (duplicate to line {startLine + 1})
+                </span>
+              </label>
+            )}
           </div>
 
-          <div className="reaction-table-wrap">
-            <div className="reaction-table-scroll">
-              <table className="reaction-table">
-                <thead>
-                  <tr>
-                    <th className="reaction-table-label">Beam</th>
-                    {LOAD_CASE_DEFS.map((def) => (
-                      <th key={def.key}>{def.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {caseTable.beams.map((beam) => (
-                    <tr key={beam.key}>
-                      <td className="reaction-table-label">{beam.label}</td>
+          {caseSpans.map((span) => (
+            <div className="reaction-table-wrap" key={span.tag}>
+              <div className="reaction-table-head">
+                <h4>{multiSpan ? `Span ${span.tag}` : 'Per-beam case totals'}</h4>
+                <span className="reaction-table-sub">
+                  Bearing line {span.line} · {span.fileCount} file(s)
+                </span>
+              </div>
+              <div className="reaction-table-scroll">
+                <table className="reaction-table">
+                  <thead>
+                    <tr>
+                      <th className="reaction-table-label">Beam</th>
                       {LOAD_CASE_DEFS.map((def) => (
-                        <td key={def.key}>
-                          {formatValue(
-                            loadCases.totals.get(`${beam.key}::${def.key}`) ?? 0,
-                          )}
-                        </td>
+                        <th key={def.key}>{def.label}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {span.beams.map((beam) => (
+                      <tr key={beam.key}>
+                        <td className="reaction-table-label">{beam.label}</td>
+                        {LOAD_CASE_DEFS.map((def) => (
+                          <td key={def.key}>
+                            {formatValue(
+                              span.totals.get(`${beam.key}::${def.key}`) ?? 0,
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          ))}
 
           <div className="case-actions">
             {LOAD_CASE_DEFS.map((def) => (

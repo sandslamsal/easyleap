@@ -36,6 +36,24 @@ export const LOAD_CASE_DEFS = [
   },
 ]
 
+// Best-effort guess of which cap span a file belongs to, from its file name
+// and internal LEAP model name. Two separate single-span models both report
+// "Span 1" in the body, so the span number there is unreliable; the name is
+// the only signal. Returns 1 or 2 (clamped to the two-span pier case); the
+// user can always override. The digit must not be part of a longer number so
+// span lengths like "Span250ft" do not read as span 2.
+export function guessSpanFromText(text) {
+  const lower = (text || '').toLowerCase()
+  const match = lower.match(/(?:^|[^a-z])s(?:pan)?[\s_.-]*([1-9])(?!\d)/)
+  if (match) {
+    return Number(match[1]) >= 2 ? 2 : 1
+  }
+  if (/\bahead/.test(lower)) {
+    return 2
+  }
+  return 1
+}
+
 function roundTenth(value) {
   return Math.round(value * 10) / 10
 }
@@ -77,16 +95,21 @@ export function formatCaseValue(value, sign = -1) {
 
 // Build the LEAP bearing-loads import text for a single case.
 // Each row is: "<bearing line>, <bearing point>, <direction>, <value>".
-// One block of rows is emitted per entry in bearingLines, so passing
-// [1, 2] writes the same loads onto both sides of the cap (back and ahead
-// span bearing lines).
-export function buildCaseTxt(table, totals, def, options = {}) {
-  const { bearingLines = [1], direction = 'Y', sign = -1 } = options
+//
+// lineSpecs is an array of { line, beams, totals }, one entry per bearing line
+// on the cap. Each line carries its own beam list and case totals, so a line
+// can come from a different span (back vs ahead) with different beam counts and
+// values. Passing two specs that share the same beams/totals at lines 1 and 2
+// writes identical loads onto both sides of the cap.
+export function buildCaseTxt(def, lineSpecs, options = {}) {
+  const { direction = 'Y', sign = -1 } = options
   const rows = []
-  for (const line of bearingLines) {
-    for (const beam of table.beams) {
-      const value = totals.get(`${beam.key}::${def.key}`) ?? 0
-      rows.push(`${line}, ${beam.beam}, ${direction}, ${formatCaseValue(value, sign)}`)
+  for (const spec of lineSpecs) {
+    for (const beam of spec.beams) {
+      const value = spec.totals.get(`${beam.key}::${def.key}`) ?? 0
+      rows.push(
+        `${spec.line}, ${beam.beam}, ${direction}, ${formatCaseValue(value, sign)}`,
+      )
     }
   }
   return ['Bearing loads', ...rows].join('\n')

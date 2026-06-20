@@ -1262,3 +1262,31 @@
   min-height: 34px;
   padding: 0 10px;
 }
+
+/* ---------- file span selector + multi-span note ---------- */
+.file-span {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.file-span:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(31, 95, 166, 0.12);
+}
+
+.case-note {
+  align-self: flex-end;
+  max-width: 52ch;
+  padding-bottom: 8px;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
