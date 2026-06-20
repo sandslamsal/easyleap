@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   ClipboardCopy,
+  Download,
   Eraser,
   FileSpreadsheet,
   FileText,
   FileUp,
+  Layers3,
   LoaderCircle,
   Table2,
   TriangleAlert,
@@ -17,6 +19,11 @@ import {
   downloadWorkbook,
   formatValue,
 } from '../utils/exportReactions.js'
+import {
+  LOAD_CASE_DEFS,
+  buildCaseTxt,
+  computeLoadCases,
+} from '../utils/loadCases.js'
 
 let fileCounter = 0
 
@@ -67,6 +74,8 @@ export function SuperstructureExtractor() {
   const [files, setFiles] = useState([])
   const [isDragging, setIsDragging] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
+  const [caseSource, setCaseSource] = useState('envelope')
+  const [bearingLine, setBearingLine] = useState('1')
 
   const doneFiles = useMemo(
     () => files.filter((file) => file.status === 'done' && file.result),
@@ -86,6 +95,20 @@ export function SuperstructureExtractor() {
     () => buildEnvelopeTable(fileTables.map((file) => file.table)),
     [fileTables],
   )
+
+  // Source table for the DC/DW case files: the governing max envelope by
+  // default, or a specific uploaded stage file when selected.
+  const caseTable = useMemo(() => {
+    if (caseSource !== 'envelope') {
+      const match = doneFiles.find((file) => file.id === caseSource)
+      if (match) {
+        return match.result.table
+      }
+    }
+    return envelopeTable
+  }, [caseSource, doneFiles, envelopeTable])
+
+  const loadCases = useMemo(() => computeLoadCases(caseTable), [caseTable])
 
   const isParsing = files.some((file) => file.status === 'parsing')
   const hasResults = doneFiles.length > 0
@@ -183,6 +206,34 @@ export function SuperstructureExtractor() {
       setActionMessage('Downloaded bearing-reactions.xlsx.')
     } catch {
       setActionMessage('Excel export failed in this browser session.')
+    }
+  }
+
+  const caseOptions = { bearingLine: Number.parseInt(bearingLine, 10) || 1 }
+
+  const downloadTextFile = (filename, content) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = filename
+    anchor.click()
+    URL.revokeObjectURL(objectUrl)
+  }
+
+  const handleDownloadCase = (def) => {
+    const content = buildCaseTxt(caseTable, loadCases.totals, def, caseOptions)
+    downloadTextFile(`${def.key}.txt`, content)
+    setActionMessage(`Downloaded ${def.key}.txt.`)
+  }
+
+  const handleCopyCase = async (def) => {
+    try {
+      const content = buildCaseTxt(caseTable, loadCases.totals, def, caseOptions)
+      await navigator.clipboard.writeText(content)
+      setActionMessage(`Copied ${def.key} bearing loads to the clipboard.`)
+    } catch {
+      setActionMessage('Clipboard copy failed in this browser session.')
     }
   }
 
@@ -316,6 +367,107 @@ export function SuperstructureExtractor() {
             subtitle={`Governing maximum across ${doneFiles.length} file(s)`}
             table={envelopeTable}
           />
+        </section>
+      ) : null}
+
+      {hasResults ? (
+        <section className="results-card">
+          <div className="results-head">
+            <Layers3 size={18} />
+            <div>
+              <h3>LEAP Load Cases: DC1 / DC2 / DW</h3>
+              <p>
+                Per-beam reactions grouped into substructure dead-load cases,
+                exported as LEAP bearing-loads import files. Values in kips,
+                applied downward (negative Y).
+              </p>
+            </div>
+          </div>
+
+          <div className="case-controls">
+            <label className="case-field">
+              <span>Source reactions</span>
+              <select
+                value={caseSource}
+                onChange={(event) => setCaseSource(event.target.value)}
+              >
+                <option value="envelope">Max Envelope (governing)</option>
+                {doneFiles.map((file) => (
+                  <option key={file.id} value={file.id}>
+                    {file.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="case-field">
+              <span>Bearing line</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={bearingLine}
+                onChange={(event) => setBearingLine(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="reaction-table-wrap">
+            <div className="reaction-table-scroll">
+              <table className="reaction-table">
+                <thead>
+                  <tr>
+                    <th className="reaction-table-label">Beam</th>
+                    {LOAD_CASE_DEFS.map((def) => (
+                      <th key={def.key}>{def.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {caseTable.beams.map((beam) => (
+                    <tr key={beam.key}>
+                      <td className="reaction-table-label">{beam.label}</td>
+                      {LOAD_CASE_DEFS.map((def) => (
+                        <td key={def.key}>
+                          {formatValue(
+                            loadCases.totals.get(`${beam.key}::${def.key}`) ?? 0,
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="case-actions">
+            {LOAD_CASE_DEFS.map((def) => (
+              <div key={def.key} className="case-export">
+                <div className="case-export-head">
+                  <strong>{def.label}</strong>
+                  <span>{def.description}</span>
+                </div>
+                <div className="case-export-buttons">
+                  <button
+                    className="button button-primary"
+                    type="button"
+                    onClick={() => handleDownloadCase(def)}
+                  >
+                    <Download size={16} />
+                    <span>{def.key}.txt</span>
+                  </button>
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={() => handleCopyCase(def)}
+                  >
+                    <ClipboardCopy size={16} />
+                    <span>Copy</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
     </>
