@@ -76,6 +76,7 @@ export function SuperstructureExtractor() {
   const [actionMessage, setActionMessage] = useState('')
   const [caseSource, setCaseSource] = useState('envelope')
   const [bearingLine, setBearingLine] = useState('1')
+  const [bothSides, setBothSides] = useState(true)
 
   const doneFiles = useMemo(
     () => files.filter((file) => file.status === 'done' && file.result),
@@ -209,7 +210,10 @@ export function SuperstructureExtractor() {
     }
   }
 
-  const caseOptions = { bearingLine: Number.parseInt(bearingLine, 10) || 1 }
+  const startLine = Number.parseInt(bearingLine, 10) || 1
+  const caseOptions = {
+    bearingLines: bothSides ? [startLine, startLine + 1] : [startLine],
+  }
 
   const downloadTextFile = (filename, content) => {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
@@ -408,6 +412,16 @@ export function SuperstructureExtractor() {
                 value={bearingLine}
                 onChange={(event) => setBearingLine(event.target.value)}
               />
+            </label>
+            <label className="section-toggle case-toggle">
+              <input
+                type="checkbox"
+                checked={bothSides}
+                onChange={(event) => setBothSides(event.target.checked)}
+              />
+              <span>
+                Both sides of cap (duplicate to line {startLine + 1})
+              </span>
             </label>
           </div>
 

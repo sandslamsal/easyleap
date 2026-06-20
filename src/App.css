@@ -1173,8 +1173,14 @@
 .case-controls {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   gap: 14px;
   margin: 14px 0 4px;
+}
+
+.case-toggle {
+  font-weight: 600;
+  font-size: 0.86rem;
 }
 
 .case-field {

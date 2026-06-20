@@ -77,11 +77,17 @@ export function formatCaseValue(value, sign = -1) {
 
 // Build the LEAP bearing-loads import text for a single case.
 // Each row is: "<bearing line>, <bearing point>, <direction>, <value>".
+// One block of rows is emitted per entry in bearingLines, so passing
+// [1, 2] writes the same loads onto both sides of the cap (back and ahead
+// span bearing lines).
 export function buildCaseTxt(table, totals, def, options = {}) {
-  const { bearingLine = 1, direction = 'Y', sign = -1 } = options
-  const rows = table.beams.map((beam) => {
-    const value = totals.get(`${beam.key}::${def.key}`) ?? 0
-    return `${bearingLine}, ${beam.beam}, ${direction}, ${formatCaseValue(value, sign)}`
-  })
+  const { bearingLines = [1], direction = 'Y', sign = -1 } = options
+  const rows = []
+  for (const line of bearingLines) {
+    for (const beam of table.beams) {
+      const value = totals.get(`${beam.key}::${def.key}`) ?? 0
+      rows.push(`${line}, ${beam.beam}, ${direction}, ${formatCaseValue(value, sign)}`)
+    }
+  }
   return ['Bearing loads', ...rows].join('\n')
 }
