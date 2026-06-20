@@ -1,5 +1,6 @@
 import { startTransition, useRef, useState } from 'react'
 import {
+  Building2,
   ClipboardCopy,
   Download,
   Eraser,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import './App.css'
 import { PreviewPanel } from './components/PreviewPanel.jsx'
+import { SuperstructureExtractor } from './components/SuperstructureExtractor.jsx'
 import { RemapSettings } from './components/RemapSettings.jsx'
 import { SectionEditor } from './components/SectionEditor.jsx'
 import { StatusBanner } from './components/StatusBanner.jsx'
@@ -116,6 +118,7 @@ const SECTION_META = {
 
 function App() {
   const settingsImportRef = useRef(null)
+  const [appMode, setAppMode] = useState('leap')
   const [fileName, setFileName] = useState('leap-loads')
   const [bearingText, setBearingText] = useState('')
   const [bearingLiveLoads, setBearingLiveLoads] = useState(false)
@@ -632,6 +635,37 @@ function App() {
 
   return (
     <main className="app-shell">
+      <div className="mode-toggle" role="tablist" aria-label="Choose tool">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={appMode === 'leap'}
+          className={`mode-toggle-button ${
+            appMode === 'leap' ? 'mode-toggle-active' : ''
+          }`}
+          onClick={() => setAppMode('leap')}
+        >
+          <WandSparkles size={16} />
+          <span>LEAP Load TXT Builder</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={appMode === 'extractor'}
+          className={`mode-toggle-button ${
+            appMode === 'extractor' ? 'mode-toggle-active' : ''
+          }`}
+          onClick={() => setAppMode('extractor')}
+        >
+          <Building2 size={16} />
+          <span>Superstructure Loads</span>
+        </button>
+      </div>
+
+      {appMode === 'extractor' ? (
+        <SuperstructureExtractor />
+      ) : (
+        <>
       <section className="hero-card">
         <div className="hero-copy">
           <h1>LEAP Load TXT Builder</h1>
@@ -765,6 +799,8 @@ function App() {
           />
         )}
       </section>
+        </>
+      )}
     </main>
   )
 }

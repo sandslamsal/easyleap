@@ -1,6 +1,40 @@
 # LEAP Load TXT Builder
 
-LEAP Load TXT Builder is a single-page React app for bridge engineers who need to assemble LEAP RC-PIER import text files from manually pasted datasets.
+A single-page React app for bridge engineers, with two tools selectable from the
+toggle in the top-left:
+
+1. **LEAP Load TXT Builder** — assemble LEAP RC-PIER import text files from
+   manually pasted datasets (the original tool, described below).
+2. **Superstructure Loads** — drop one or more LEAP superstructure analysis
+   report PDFs and extract the dead-load bearing reactions per beam.
+
+## Superstructure Loads (PDF reaction extractor)
+
+Drop one or more LEAP "Shear and Moment Envelope" report PDFs. Each file is
+parsed entirely in your browser (nothing is uploaded). For every beam, the tool
+reads the **SERVICE I** envelope and extracts the shear `V` at the **Bearing**
+station (the unfactored dead-load reaction) for each dead-load component:
+
+- Self wt. (Max)
+- DL-Prec. DC(Max)
+- DL-Prec. DW(Max)
+- Deck + Haunch (Max)
+- Diaphragm (Max)
+- DL-Comp DC(Max)
+- DL-Comp DW(Max)
+
+It produces one table per file (loads x beams) plus a **Max Envelope** table that
+takes the governing maximum across all dropped files. Results can be copied
+(tab-separated, ready to paste into Excel) or downloaded as a `.xlsx` workbook.
+
+Pages are scanned dynamically by header, so the number of beams/spans and the
+page positions can vary between reports. Mirrored beam pages (where the bearing
+is the right-most station) are handled automatically.
+
+## LEAP Load TXT Builder (text file assembler)
+
+This tool assembles LEAP RC-PIER import text files from manually pasted
+datasets.
 
 The app accepts three separate inputs:
 
@@ -26,6 +60,8 @@ Users can paste copied rows from Excel, TXT files, PDFs, or other tables directl
 - React
 - Vite
 - Lucide React
+- pdf.js (`pdfjs-dist`) for in-browser PDF text extraction
+- SheetJS (`xlsx`) for Excel export
 
 ## Local Development
 
