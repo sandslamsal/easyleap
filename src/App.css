@@ -1,5 +1,5 @@
 /* ============================================================
-   EasyLEAP — WaveLabX-style skin
+   EasyLEAP WaveLabX-style skin
    Flat white cards, thin borders, small radii, blue accent,
    gradient header/footer banners, dense scientific layout.
    ============================================================ */
@@ -1070,86 +1070,27 @@
 }
 
 /* ---------- footer ---------- */
-.footer-wave {
-  line-height: 0;
-  margin-top: 24px;
-}
-
-.footer-wave svg {
-  display: block;
-  width: 100%;
-  height: 44px;
-}
-
-.footer-wave path {
-  fill: var(--accent-strong);
-}
-
 .site-footer {
-  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
-  color: #d3e2f1;
-  padding: 6px 20px 28px;
-}
-
-.footer-inner {
-  width: min(720px, calc(100% - 40px));
-  margin: 0 auto;
+  margin-top: 28px;
+  padding: 16px 20px 26px;
+  border-top: 1px solid var(--border);
   text-align: center;
 }
 
-.footer-brand {
-  color: #fff;
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  margin-bottom: 6px;
+.site-footer p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-soft);
 }
 
-.footer-tag {
-  margin: 0 auto;
-  font-size: 0.84rem;
-  color: #c8dcef;
-  line-height: 1.5;
-}
-
-.footer-links {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin: 16px 0 12px;
-}
-
-.footer-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #fff;
-  color: var(--accent-strong);
+.site-footer a {
+  color: var(--accent);
   font-weight: 600;
-  font-size: 0.84rem;
-  padding: 8px 15px;
-  border-radius: 8px;
   text-decoration: none;
-  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.footer-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-}
-
-.footer-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
-
-.footer-fine {
-  font-size: 0.76rem;
-  color: #9bb6d2;
-  margin-top: 10px;
+.site-footer a:hover {
+  text-decoration: underline;
 }
 
 /* ---------- utility ---------- */

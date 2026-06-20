@@ -3,7 +3,7 @@
 // governing max-envelope block at the bottom.
 import { buildEnvelopeTable } from './superstructureParser.js'
 
-const TITLE = 'Superstructure Bearing Reactions — Shear V at Bearing (SERVICE I)'
+const TITLE = 'Superstructure Bearing Reactions: Shear V at Bearing (SERVICE I)'
 const UNITS = 'Units: kips'
 
 export function formatValue(value) {

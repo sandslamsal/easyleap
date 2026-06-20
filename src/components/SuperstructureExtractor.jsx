@@ -210,7 +210,7 @@ export function SuperstructureExtractor() {
           <div className="dropzone-copy">
             <strong>Drop LEAP superstructure report PDFs here</strong>
             <span>
-              or click to browse. Drop several stages at once — each is parsed
+              or click to browse. Drop several stages at once; each is parsed
               locally in your browser.
             </span>
           </div>
@@ -295,7 +295,7 @@ export function SuperstructureExtractor() {
           <div className="results-head">
             <Table2 size={18} />
             <div>
-              <h3>Bearing Reactions — Shear V at Bearing (SERVICE I)</h3>
+              <h3>Bearing Reactions: Shear V at Bearing (SERVICE I)</h3>
               <p>
                 Unfactored dead-load shear at the bearing for each beam. Values
                 in kips.
