@@ -8,6 +8,7 @@ import {
   FileUp,
   Layers3,
   LoaderCircle,
+  Printer,
   Table2,
   TriangleAlert,
   Trash2,
@@ -27,6 +28,114 @@ import {
 } from '../utils/loadCases.js'
 
 let fileCounter = 0
+
+const baseName = (name) => name.replace(/\.pdf$/i, '')
+
+// Plain ruled table used in the printable report.
+function PrintTable({ title, subtitle, headers, rows }) {
+  return (
+    <div className="print-block">
+      <h3>
+        {title}
+        {subtitle ? (
+          <span className="print-block-sub"> ({subtitle})</span>
+        ) : null}
+      </h3>
+      <table className="print-table">
+        <thead>
+          <tr>
+            {headers.map((head, index) => (
+              <th key={index} className={index === 0 ? 'left' : ''}>
+                {head}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className={cellIndex === 0 ? 'left' : ''}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function reactionRows(table) {
+  return table.labels.map((label) => [
+    label,
+    ...table.beams.map((beam) => {
+      const value = table.values.get(`${beam.key}::${label}`)
+      return value === undefined ? '—' : formatValue(value)
+    }),
+  ])
+}
+
+function caseRows(span) {
+  return span.beams.map((beam) => [
+    beam.label,
+    ...LOAD_CASE_DEFS.map((def) =>
+      formatValue(span.totals.get(`${beam.key}::${def.key}`) ?? 0),
+    ),
+  ])
+}
+
+// Hidden on screen; revealed and styled for print/PDF only.
+function PrintReport({ files, envelopeTable, caseSpans, multiSpan }) {
+  const caseHeaders = ['Beam', ...LOAD_CASE_DEFS.map((def) => def.label)]
+  return (
+    <div className="print-report">
+      <header className="print-head">
+        <h1>Superstructure Bearing Reactions</h1>
+        <p className="print-sub">Shear (V) at Bearing, SERVICE I &middot; Units: kips</p>
+      </header>
+
+      <h2>Source files</h2>
+      <ul className="print-files">
+        {files.map((file) => (
+          <li key={file.id}>
+            {baseName(file.name)} (Span {file.span ?? 1},{' '}
+            {file.result.beamCount} beams)
+          </li>
+        ))}
+      </ul>
+
+      <h2>Extracted reactions</h2>
+      {files.map((file) => (
+        <PrintTable
+          key={file.id}
+          title={baseName(file.name)}
+          subtitle={`Span ${file.span ?? 1}`}
+          headers={['Load Component', ...file.result.table.beams.map((b) => b.label)]}
+          rows={reactionRows(file.result.table)}
+        />
+      ))}
+      <PrintTable
+        title="Max Envelope"
+        subtitle="governing across files"
+        headers={['Load Component', ...envelopeTable.beams.map((b) => b.label)]}
+        rows={reactionRows(envelopeTable)}
+      />
+
+      <h2>Load cases (per beam)</h2>
+      {caseSpans.map((span) => (
+        <PrintTable
+          key={span.tag}
+          title={multiSpan ? `Span ${span.tag}` : 'Per-beam case totals'}
+          subtitle={`bearing line ${span.line}`}
+          headers={caseHeaders}
+          rows={caseRows(span)}
+        />
+      ))}
+    </div>
+  )
+}
 
 function ReactionTable({ title, table, subtitle }) {
   if (!table || table.beams.length === 0) {
@@ -235,7 +344,7 @@ export function SuperstructureExtractor() {
       return
     }
     try {
-      await navigator.clipboard.writeText(buildClipboardTsv(fileTables))
+      await navigator.clipboard.writeText(buildClipboardTsv(fileTables, caseSpans))
       setActionMessage('Copied all tables. Paste directly into Excel.')
     } catch {
       setActionMessage('Clipboard copy failed in this browser session.')
@@ -247,7 +356,7 @@ export function SuperstructureExtractor() {
       return
     }
     try {
-      await downloadWorkbook(fileTables, 'bearing-reactions')
+      await downloadWorkbook(fileTables, caseSpans, 'bearing-reactions')
       setActionMessage('Downloaded bearing-reactions.xlsx.')
     } catch {
       setActionMessage('Excel export failed in this browser session.')
@@ -383,6 +492,15 @@ export function SuperstructureExtractor() {
           <button
             className="button button-secondary"
             type="button"
+            onClick={() => window.print()}
+            disabled={!hasResults || isParsing}
+          >
+            <Printer size={16} />
+            <span>Print / PDF</span>
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
             onClick={handleClearAll}
             disabled={files.length === 0}
           >
@@ -400,7 +518,7 @@ export function SuperstructureExtractor() {
           <div className="results-head">
             <Table2 size={18} />
             <div>
-              <h3>Bearing Reactions: Shear V at Bearing (SERVICE I)</h3>
+              <h3>Bearing Reactions: Shear (V) at Bearing (SERVICE I)</h3>
               <p>
                 Unfactored dead-load shear at the bearing for each beam. Values
                 in kips.
@@ -411,7 +529,8 @@ export function SuperstructureExtractor() {
           {doneFiles.map((file) => (
             <ReactionTable
               key={file.id}
-              title={file.name}
+              title={baseName(file.name)}
+              subtitle={`Span ${file.span ?? 1}`}
               table={file.result.table}
             />
           ))}
@@ -429,11 +548,11 @@ export function SuperstructureExtractor() {
           <div className="results-head">
             <Layers3 size={18} />
             <div>
-              <h3>LEAP Load Cases: DC1 / DC2 / DW</h3>
+              <h3>LEAP Load Cases: DC1 / DC2 / DC / DW</h3>
               <p>
-                Per-beam reactions grouped into substructure dead-load cases,
-                exported as LEAP bearing-loads import files. Values in kips,
-                applied downward (negative Y).
+                Per-beam reactions grouped into substructure dead-load cases
+                (DC = DC1 + DC2), exported as LEAP bearing-loads import files.
+                Values in kips, applied downward (negative Y).
               </p>
             </div>
           </div>
@@ -534,6 +653,15 @@ export function SuperstructureExtractor() {
             ))}
           </div>
         </section>
+      ) : null}
+
+      {hasResults ? (
+        <PrintReport
+          files={doneFiles}
+          envelopeTable={envelopeTable}
+          caseSpans={caseSpans}
+          multiSpan={multiSpan}
+        />
       ) : null}
     </>
   )

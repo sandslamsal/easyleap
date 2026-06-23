@@ -1290,3 +1290,119 @@
   color: var(--text-muted);
   line-height: 1.4;
 }
+
+/* ---------- printable report (screen-hidden, print-only) ---------- */
+.print-report {
+  display: none;
+}
+
+@media print {
+  .site-header,
+  .mode-toggle,
+  .toolbar-card,
+  .results-card,
+  .footer-wave,
+  .site-footer {
+    display: none !important;
+  }
+
+  .app-shell {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  @page {
+    margin: 16mm;
+  }
+
+  .print-report {
+    display: block !important;
+    color: #111;
+    font-family: Georgia, 'Times New Roman', 'Liberation Serif', serif;
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+
+  .print-head {
+    text-align: center;
+    margin-bottom: 14pt;
+    padding-bottom: 8pt;
+    border-bottom: 1.5pt solid #111;
+  }
+
+  .print-head h1 {
+    margin: 0;
+    font-size: 19pt;
+    font-weight: 700;
+  }
+
+  .print-sub {
+    margin: 4pt 0 0;
+    font-size: 10.5pt;
+    color: #333;
+  }
+
+  .print-report h2 {
+    font-size: 12.5pt;
+    margin: 16pt 0 6pt;
+    padding-bottom: 2pt;
+    border-bottom: 0.75pt solid #999;
+  }
+
+  .print-files {
+    margin: 0;
+    padding-left: 18pt;
+  }
+
+  .print-files li {
+    margin-bottom: 2pt;
+  }
+
+  .print-block {
+    margin: 10pt 0;
+    page-break-inside: avoid;
+  }
+
+  .print-block h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    margin: 0 0 4pt;
+  }
+
+  .print-block-sub {
+    font-weight: 400;
+    font-style: italic;
+    color: #444;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .print-table th,
+  .print-table td {
+    padding: 3pt 6pt;
+    text-align: right;
+    border-bottom: 0.5pt solid #bbb;
+    white-space: nowrap;
+  }
+
+  .print-table thead th {
+    border-top: 1pt solid #111;
+    border-bottom: 1pt solid #111;
+    font-weight: 700;
+  }
+
+  .print-table tbody tr:last-child td {
+    border-bottom: 1pt solid #111;
+  }
+
+  .print-table th.left,
+  .print-table td.left {
+    text-align: left;
+  }
+}

@@ -2,8 +2,9 @@
 // reactions. Layout is a single stacked sheet: one block per file, then a
 // governing max-envelope block at the bottom.
 import { buildEnvelopeTable } from './superstructureParser.js'
+import { LOAD_CASE_DEFS } from './loadCases.js'
 
-const TITLE = 'Superstructure Bearing Reactions: Shear V at Bearing (SERVICE I)'
+const TITLE = 'Superstructure Bearing Reactions: Shear (V) at Bearing (SERVICE I)'
 const UNITS = 'Units: kips'
 
 export function formatValue(value) {
@@ -11,8 +12,9 @@ export function formatValue(value) {
 }
 
 // Produce a stacked array-of-arrays plus a matching mask marking numeric cells.
-// fileTables: [{ name, table }]. envelopeTable from buildEnvelopeTable.
-function buildStackedAoa(fileTables, envelopeTable) {
+// fileTables: [{ name, table }]. caseSpans: [{ tag, line, beams, totals }] from
+// the load-case panel, appended as a per-beam DC1/DC2/DC/DW summary.
+function buildStackedAoa(fileTables, envelopeTable, caseSpans = []) {
   const aoa = []
   const numeric = []
 
@@ -38,6 +40,21 @@ function buildStackedAoa(fileTables, envelopeTable) {
     pushRow([])
   }
 
+  const pushCaseBlock = (title, span) => {
+    pushRow([title])
+    pushRow(['Beam', ...LOAD_CASE_DEFS.map((def) => def.label)])
+    for (const beam of span.beams) {
+      const valueCells = LOAD_CASE_DEFS.map(
+        (def) => span.totals.get(`${beam.key}::${def.key}`) ?? 0,
+      )
+      pushRow(
+        [beam.label, ...valueCells],
+        [false, ...valueCells.map(() => true)],
+      )
+    }
+    pushRow([])
+  }
+
   pushRow([TITLE])
   pushRow([UNITS])
   pushRow([])
@@ -48,12 +65,20 @@ function buildStackedAoa(fileTables, envelopeTable) {
 
   pushBlock('MAX ENVELOPE (governing across files)', envelopeTable)
 
+  for (const span of caseSpans) {
+    const title =
+      caseSpans.length > 1
+        ? `LOAD CASES (Span ${span.tag}, line ${span.line})`
+        : 'LOAD CASES (per beam)'
+    pushCaseBlock(title, span)
+  }
+
   return { aoa, numeric }
 }
 
-export function buildClipboardTsv(fileTables) {
+export function buildClipboardTsv(fileTables, caseSpans = []) {
   const envelopeTable = buildEnvelopeTable(fileTables.map((f) => f.table))
-  const { aoa, numeric } = buildStackedAoa(fileTables, envelopeTable)
+  const { aoa, numeric } = buildStackedAoa(fileTables, envelopeTable, caseSpans)
 
   return aoa
     .map((row, r) =>
@@ -66,12 +91,13 @@ export function buildClipboardTsv(fileTables) {
 
 export async function downloadWorkbook(
   fileTables,
+  caseSpans = [],
   fileBaseName = 'bearing-reactions',
 ) {
   // Lazy-load SheetJS so it stays out of the initial bundle.
   const XLSX = await import('xlsx')
   const envelopeTable = buildEnvelopeTable(fileTables.map((f) => f.table))
-  const { aoa, numeric } = buildStackedAoa(fileTables, envelopeTable)
+  const { aoa, numeric } = buildStackedAoa(fileTables, envelopeTable, caseSpans)
 
   const worksheet = XLSX.utils.aoa_to_sheet(aoa)
 

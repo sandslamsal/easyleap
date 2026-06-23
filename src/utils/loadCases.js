@@ -10,29 +10,39 @@
 // case sums only the components present in the source table, so files that
 // lack a component (e.g. a zero DW) still produce a valid 0.0 row.
 
+const DC1_COMPONENTS = [
+  'Self wt. (Max)',
+  'DL-Prec. DC(Max)',
+  'Deck + Haunch (Max)',
+  'Diaphragm (Max)',
+]
+const DC2_COMPONENTS = ['DL-Comp DC(Max)']
+const DW_COMPONENTS = ['DL-Comp DW(Max)', 'DL-Prec. DW(Max)']
+
 export const LOAD_CASE_DEFS = [
   {
     key: 'DC1',
     label: 'DC1',
     description: 'Non-composite DC: girder self wt, precast DC, deck + haunch, diaphragm',
-    components: [
-      'Self wt. (Max)',
-      'DL-Prec. DC(Max)',
-      'Deck + Haunch (Max)',
-      'Diaphragm (Max)',
-    ],
+    components: DC1_COMPONENTS,
   },
   {
     key: 'DC2',
     label: 'DC2',
     description: 'Composite DC: barriers, rail',
-    components: ['DL-Comp DC(Max)'],
+    components: DC2_COMPONENTS,
+  },
+  {
+    key: 'DC',
+    label: 'DC',
+    description: 'Total DC (DC1 + DC2)',
+    components: [...DC1_COMPONENTS, ...DC2_COMPONENTS],
   },
   {
     key: 'DW',
     label: 'DW',
     description: 'Wearing surface and utilities',
-    components: ['DL-Comp DW(Max)', 'DL-Prec. DW(Max)'],
+    components: DW_COMPONENTS,
   },
 ]
 
