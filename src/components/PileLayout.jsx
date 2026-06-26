@@ -324,6 +324,8 @@ export function PileLayout() {
   const [meta, setMeta] = useState(null)
   const [actionMessage, setActionMessage] = useState('')
   const [selected, setSelected] = useState(null)
+  const [project, setProject] = useState({ name: '', engineer: '', job: '' })
+  const [pageSize, setPageSize] = useState('letter')
 
   // Footing is entered in feet; the engine and coordinates work in inches.
   const fXin = num(footingX) * 12
@@ -423,6 +425,40 @@ export function PileLayout() {
     setActionMessage('Downloaded pile-coordinates.csv.')
   }
 
+  const handlePdf = async () => {
+    if (!ready) {
+      return
+    }
+    setActionMessage('Generating PDF report...')
+    try {
+      const { generatePilePdf } = await import('../utils/pilePdf.js')
+      const now = new Date()
+      const dateStr = now.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      await generatePilePdf({
+        piles,
+        meta,
+        pileType,
+        pileSize: D,
+        footingX: usedFX,
+        footingZ: usedFZ,
+        compliance,
+        project,
+        pageSize,
+        dateStr,
+        useGdot,
+      })
+      setActionMessage('PDF report downloaded.')
+    } catch (error) {
+      setActionMessage(`PDF generation failed: ${error.message}`)
+    }
+  }
+
   const reqSp = D > 0 ? minSpacing(D) : 0
   const spacingText = meta
     ? Math.abs(meta.spacingX - meta.spacingZ) < 0.05
@@ -495,6 +531,50 @@ export function PileLayout() {
           </label>
         </div>
 
+        <div className="pile-report-grid">
+          <label className="field">
+            <span className="field-label">Project name (for report)</span>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="optional"
+              value={project.name}
+              onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Prepared by</span>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="optional"
+              value={project.engineer}
+              onChange={(e) => setProject((p) => ({ ...p, engineer: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Job No.</span>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="optional"
+              value={project.job}
+              onChange={(e) => setProject((p) => ({ ...p, job: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Page size</span>
+            <select
+              className="field-input"
+              value={pageSize}
+              onChange={(e) => setPageSize(e.target.value)}
+            >
+              <option value="letter">US Letter</option>
+              <option value="a4">A4</option>
+            </select>
+          </label>
+        </div>
+
         <div className="action-cluster extractor-actions">
           <button className="button button-secondary" type="button" onClick={regenerate} disabled={!valid}>
             <RefreshCw size={16} />
@@ -508,9 +588,9 @@ export function PileLayout() {
             <Download size={16} />
             <span>Download .csv</span>
           </button>
-          <button className="button button-secondary" type="button" onClick={() => window.print()} disabled={!ready}>
+          <button className="button button-primary" type="button" onClick={handlePdf} disabled={!ready}>
             <Printer size={16} />
-            <span>Print / PDF</span>
+            <span>Download PDF report</span>
           </button>
           {actionMessage ? <span className="extractor-message">{actionMessage}</span> : null}
         </div>
@@ -538,7 +618,6 @@ export function PileLayout() {
               piles={piles}
               footingX={usedFX}
               footingZ={usedFZ}
-              pileSize={D}
               pileType={pileType}
               selected={selected}
               onSelect={setSelected}
@@ -598,85 +677,6 @@ export function PileLayout() {
         </div>
       </section>
 
-      {ready ? (
-        <div className="print-report">
-          <header className="print-head">
-            <h1>Pile Cap Layout</h1>
-            <p className="print-sub">
-              AASHTO LRFD 10.7.1.2{useGdot ? ' + GDOT Appendix 4B' : ''} &middot;
-              Coordinates in inches, LEAP convention (origin mid-left, X right, Z
-              down)
-            </p>
-          </header>
-
-          <h2>Design Parameters</h2>
-          <table className="print-params">
-            <tbody>
-              <tr>
-                <th>Footing (X x Z)</th>
-                <td>{ftIn(usedFX)} x {ftIn(usedFZ)}</td>
-                <th>Pile type</th>
-                <td>{pileType}</td>
-              </tr>
-              <tr>
-                <th>Number of piles</th>
-                <td>{piles.length}</td>
-                <th>Pile size</th>
-                <td>{D} in</td>
-              </tr>
-              <tr>
-                <th>Arrangement</th>
-                <td>{meta.arrangementName}</td>
-                <th>Spacing c/c</th>
-                <td>{spacingText} in</td>
-              </tr>
-              <tr>
-                <th>Edge distance</th>
-                <td>{meta.edge} in (all sides)</td>
-                <th>Code basis</th>
-                <td>AASHTO LRFD{useGdot ? ' + GDOT' : ''}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <h2>Plan &amp; Coordinates</h2>
-          <div className="print-pile-row">
-            <div className="print-plan">
-              <PileDiagram piles={piles} footingX={usedFX} footingZ={usedFZ} pileType={pileType} />
-            </div>
-            <div className="print-coords">
-              <div className="print-cap">Pile Coordinates (in)</div>
-              <CoordGrid piles={piles} readOnly />
-            </div>
-          </div>
-
-          <h2>Code Compliance</h2>
-          <table className="print-compliance">
-            <thead>
-              <tr>
-                <th className="pc-mark" />
-                <th>Code</th>
-                <th>Requirement</th>
-                <th>Clause</th>
-                <th className="pc-val">Provided</th>
-              </tr>
-            </thead>
-            <tbody>
-              {compliance.map((check, index) => (
-                <tr key={`${check.clause}-${index}`} className={`pc-${check.status}`}>
-                  <td className="pc-mark">
-                    {check.status === 'met' ? '✓' : check.status === 'fail' ? '✗' : '!'}
-                  </td>
-                  <td>{check.code}</td>
-                  <td>{check.label}</td>
-                  <td className="pc-clause">{check.clause}</td>
-                  <td className="pc-val">{check.actual}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
     </>
   )
 }

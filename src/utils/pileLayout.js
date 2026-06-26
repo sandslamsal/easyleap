@@ -176,7 +176,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
   const half = pileSize / 2
   const EPS = 1e-6
 
-  // AASHTO 10.7.1.2 — center-to-center spacing.
+  // AASHTO 10.7.1.2 - center-to-center spacing.
   const reqCC = minSpacing(pileSize)
   let minCC = Infinity
   for (let i = 0; i < piles.length; i += 1) {
@@ -193,7 +193,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
     status: piles.length < 2 ? 'advisory' : minCC + EPS >= reqCC ? 'met' : 'fail',
   })
 
-  // AASHTO 10.7.1.2 — pile side to nearest footing edge.
+  // AASHTO 10.7.1.2 - pile side to nearest footing edge.
   let minEdge = Infinity
   for (const pile of piles) {
     const centerToEdge = Math.min(
@@ -214,7 +214,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
   })
 
   if (useGdot) {
-    // GDOT 4.2.5.3 — coordinates detailed in 1 inch increments.
+    // GDOT 4.2.5.3 - coordinates detailed in 1 inch increments.
     const allInteger = piles.every(
       (pile) => Number.isInteger(pile.x) && Number.isInteger(pile.z),
     )
@@ -226,7 +226,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
       status: allInteger ? 'met' : 'fail',
     })
 
-    // GDOT 4.2.5.1 — plan dimensions in 3 inch increments.
+    // GDOT 4.2.5.1 - plan dimensions in 3 inch increments.
     const foot3 =
       Math.abs(footingX % 3) < EPS && Math.abs(footingZ % 3) < EPS
     checks.push({
@@ -237,7 +237,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
       status: foot3 ? 'met' : 'fail',
     })
 
-    // GDOT 4.2.5.1 — square footing whenever possible (advisory).
+    // GDOT 4.2.5.1 - square footing whenever possible (advisory).
     const square = Math.abs(footingX - footingZ) < EPS
     checks.push({
       code: 'GDOT',
@@ -247,7 +247,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
       status: square ? 'met' : 'advisory',
     })
 
-    // GDOT 4.2.5.3 / Appendix 4B — preset arrangement coverage.
+    // GDOT 4.2.5.3 / Appendix 4B - preset arrangement coverage.
     const encoded = GDOT_PRESETS[piles.length] != null // Figure 4B-1, 4 to 12
     const inRange = piles.length >= 4 && piles.length <= 25
     checks.push({
@@ -256,7 +256,7 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
       label: encoded
         ? 'Arrangement matches an encoded Figure 4B-1 preset'
         : inRange
-          ? 'Grid approximation — verify against Figure 4B-2 / 4B-3'
+          ? 'Grid approximation. Verify against Figure 4B-2 / 4B-3'
           : 'Outside the Appendix 4B range (4 to 25 piles)',
       actual: `${piles.length} piles`,
       status: encoded ? 'met' : inRange ? 'advisory' : 'fail',
