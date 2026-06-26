@@ -433,12 +433,10 @@ export function PileLayout() {
     try {
       const { generatePilePdf } = await import('../utils/pilePdf.js')
       const now = new Date()
-      const dateStr = now.toLocaleString(undefined, {
+      const dateStr = now.toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
       })
       await generatePilePdf({
         piles,
