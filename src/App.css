@@ -1848,45 +1848,126 @@
 
 /* ---------- pile layout: print report ---------- */
 @media print {
+  /* design-parameter table */
+  .print-params {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    table-layout: fixed;
+  }
+  .print-params th,
+  .print-params td {
+    border: 0.5pt solid #b8bec9;
+    padding: 3pt 8pt;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: break-word;
+  }
+  .print-params th {
+    width: 16%;
+    background: #eef1f5;
+    font-weight: 700;
+    color: #1f2937;
+  }
+  .print-params td {
+    width: 34%;
+  }
+
+  /* plan + coordinates row, balanced */
   .print-pile-row {
     display: flex;
-    gap: 18pt;
+    gap: 16pt;
     align-items: flex-start;
-    margin: 8pt 0 4pt;
+    margin: 6pt 0;
     page-break-inside: avoid;
   }
-  .print-pile-row .pile-canvas {
-    flex: 1.2;
+  .print-plan {
+    flex: 0 0 56%;
+    max-width: 56%;
+  }
+  .print-plan .pile-canvas {
     border: 0.5pt solid #d6dce5;
+    border-radius: 4pt;
     padding: 4pt;
     background: #fff;
     box-shadow: none;
   }
-  .print-pile-row .pile-canvas-svg {
-    max-height: 320pt;
+  .print-plan .pile-canvas-svg {
+    width: 100%;
+    height: auto;
   }
-  .print-report .pile-grid {
-    width: auto;
-    min-width: 150pt;
+  .print-coords {
+    flex: 1;
+    min-width: 0;
+  }
+  .print-cap {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #4b5563;
+    margin-bottom: 3pt;
+  }
+  .print-coords .pile-grid {
+    width: 100%;
     font-size: 9pt;
   }
-  .print-report .pile-grid th,
-  .print-report .pile-grid td {
+  .print-coords .pile-grid th,
+  .print-coords .pile-grid td {
     border: 0.5pt solid #999;
-    padding: 2.5pt 8pt;
+    padding: 2pt 8pt;
   }
-  .print-report .pile-grid thead th {
+  .print-coords .pile-grid thead th {
     border-color: #333;
-    background: #eee;
+    background: #eef1f5;
   }
-  .print-report .pile-grid td.pile-idx {
-    background: #f2f2f2;
+  .print-coords .pile-grid td.pile-idx {
+    background: #f4f6f9;
   }
-  .print-report .compliance-list {
+
+  /* compliance table */
+  .print-compliance {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
     page-break-inside: avoid;
   }
-  .print-report .compliance-item {
-    background: #fff !important;
-    border: 0.5pt solid #bbb;
+  .print-compliance th,
+  .print-compliance td {
+    border: 0.5pt solid #b8bec9;
+    padding: 3pt 8pt;
+    text-align: left;
+    vertical-align: top;
+  }
+  .print-compliance thead th {
+    background: #eef1f5;
+    font-weight: 700;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #1f2937;
+  }
+  .print-compliance .pc-mark {
+    width: 16pt;
+    text-align: center;
+    font-weight: 700;
+  }
+  .print-compliance .pc-clause {
+    white-space: nowrap;
+    color: #4b5563;
+  }
+  .print-compliance .pc-val {
+    text-align: right;
+    white-space: nowrap;
+    font-weight: 700;
+  }
+  .print-compliance .pc-met .pc-mark {
+    color: #1a7f37;
+  }
+  .print-compliance .pc-fail .pc-mark {
+    color: #b42318;
+  }
+  .print-compliance .pc-advisory .pc-mark {
+    color: #b25e09;
   }
 }

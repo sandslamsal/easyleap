@@ -131,7 +131,7 @@ function Dimension({ a, b, off, vertical, label, fs }) {
         <line x1={x} y1={a} x2={x} y2={b} className="pile-dim-line" />
         <polygon className="pile-dim-arrow" points={`${x},${a} ${x - head * 0.55},${a + head} ${x + head * 0.55},${a + head}`} />
         <polygon className="pile-dim-arrow" points={`${x},${b} ${x - head * 0.55},${b - head} ${x + head * 0.55},${b - head}`} />
-        <g className="pile-dim-text">
+        <g className="pile-dim-text" transform={`rotate(-90 ${x} ${mid})`}>
           <rect x={x - bw / 2} y={mid - bh / 2} width={bw} height={bh} rx={fs * 0.3} />
           <text x={x} y={mid + fs * 0.34} fontSize={fs * 0.9}>{label}</text>
         </g>
@@ -604,31 +604,77 @@ export function PileLayout() {
             <h1>Pile Cap Layout</h1>
             <p className="print-sub">
               AASHTO LRFD 10.7.1.2{useGdot ? ' + GDOT Appendix 4B' : ''} &middot;
-              Coordinates in inches (LEAP convention)
+              Coordinates in inches, LEAP convention (origin mid-left, X right, Z
+              down)
             </p>
           </header>
 
-          <h2>Design</h2>
-          <ul className="print-files">
-            <li>
-              Footing: {ftIn(usedFX)} (X) x {ftIn(usedFZ)} (Z)
-            </li>
-            <li>
-              Piles: {piles.length} at {D} in {pileType}
-            </li>
-            <li>
-              {meta.arrangementName}; spacing {spacingText} in c/c; edge{' '}
-              {meta.edge} in on all sides
-            </li>
-          </ul>
+          <h2>Design Parameters</h2>
+          <table className="print-params">
+            <tbody>
+              <tr>
+                <th>Footing (X x Z)</th>
+                <td>{ftIn(usedFX)} x {ftIn(usedFZ)}</td>
+                <th>Pile type</th>
+                <td>{pileType}</td>
+              </tr>
+              <tr>
+                <th>Number of piles</th>
+                <td>{piles.length}</td>
+                <th>Pile size</th>
+                <td>{D} in</td>
+              </tr>
+              <tr>
+                <th>Arrangement</th>
+                <td>{meta.arrangementName}</td>
+                <th>Spacing c/c</th>
+                <td>{spacingText} in</td>
+              </tr>
+              <tr>
+                <th>Edge distance</th>
+                <td>{meta.edge} in (all sides)</td>
+                <th>Code basis</th>
+                <td>AASHTO LRFD{useGdot ? ' + GDOT' : ''}</td>
+              </tr>
+            </tbody>
+          </table>
 
+          <h2>Plan &amp; Coordinates</h2>
           <div className="print-pile-row">
-            <PileDiagram piles={piles} footingX={usedFX} footingZ={usedFZ} pileSize={D} pileType={pileType} />
-            <CoordGrid piles={piles} readOnly />
+            <div className="print-plan">
+              <PileDiagram piles={piles} footingX={usedFX} footingZ={usedFZ} pileType={pileType} />
+            </div>
+            <div className="print-coords">
+              <div className="print-cap">Pile Coordinates (in)</div>
+              <CoordGrid piles={piles} readOnly />
+            </div>
           </div>
 
-          <h2>Code compliance</h2>
-          <ComplianceList compliance={compliance} />
+          <h2>Code Compliance</h2>
+          <table className="print-compliance">
+            <thead>
+              <tr>
+                <th className="pc-mark" />
+                <th>Code</th>
+                <th>Requirement</th>
+                <th>Clause</th>
+                <th className="pc-val">Provided</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compliance.map((check, index) => (
+                <tr key={`${check.clause}-${index}`} className={`pc-${check.status}`}>
+                  <td className="pc-mark">
+                    {check.status === 'met' ? '✓' : check.status === 'fail' ? '✗' : '!'}
+                  </td>
+                  <td>{check.code}</td>
+                  <td>{check.label}</td>
+                  <td className="pc-clause">{check.clause}</td>
+                  <td className="pc-val">{check.actual}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : null}
     </>
