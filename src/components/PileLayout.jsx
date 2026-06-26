@@ -530,70 +530,6 @@ export function PileLayout() {
             </span>
           </label>
         </div>
-
-        <div className="pile-report-grid">
-          <label className="field">
-            <span className="field-label">Project name (for report)</span>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="optional"
-              value={project.name}
-              onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Prepared by</span>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="optional"
-              value={project.engineer}
-              onChange={(e) => setProject((p) => ({ ...p, engineer: e.target.value }))}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Job No.</span>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="optional"
-              value={project.job}
-              onChange={(e) => setProject((p) => ({ ...p, job: e.target.value }))}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Page size</span>
-            <select
-              className="field-input"
-              value={pageSize}
-              onChange={(e) => setPageSize(e.target.value)}
-            >
-              <option value="letter">US Letter</option>
-              <option value="a4">A4</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="action-cluster extractor-actions">
-          <button className="button button-secondary" type="button" onClick={regenerate} disabled={!valid}>
-            <RefreshCw size={16} />
-            <span>Regenerate</span>
-          </button>
-          <button className="button button-primary" type="button" onClick={handleCopy} disabled={!ready}>
-            <ClipboardCopy size={16} />
-            <span>Copy coordinates</span>
-          </button>
-          <button className="button button-secondary" type="button" onClick={handleDownload} disabled={!ready}>
-            <Download size={16} />
-            <span>Download .csv</span>
-          </button>
-          <button className="button button-primary" type="button" onClick={handlePdf} disabled={!ready}>
-            <Printer size={16} />
-            <span>Download PDF report</span>
-          </button>
-          {actionMessage ? <span className="extractor-message">{actionMessage}</span> : null}
-        </div>
       </section>
 
       {ready ? (
@@ -677,6 +613,82 @@ export function PileLayout() {
         </div>
       </section>
 
+      <section className="toolbar-card">
+        <div className="results-head">
+          <Printer size={18} />
+          <div>
+            <h3>Report &amp; Export</h3>
+            <p>
+              Project details below appear on the PDF report. Copy, download, or
+              export the layout.
+            </p>
+          </div>
+        </div>
+
+        <div className="pile-report-grid">
+          <label className="field">
+            <span className="field-label">Project name (for report)</span>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="optional"
+              value={project.name}
+              onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Prepared by</span>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="optional"
+              value={project.engineer}
+              onChange={(e) => setProject((p) => ({ ...p, engineer: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Job No.</span>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="optional"
+              value={project.job}
+              onChange={(e) => setProject((p) => ({ ...p, job: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Page size</span>
+            <select
+              className="field-input"
+              value={pageSize}
+              onChange={(e) => setPageSize(e.target.value)}
+            >
+              <option value="letter">US Letter</option>
+              <option value="a4">A4</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="action-cluster extractor-actions">
+          <button className="button button-secondary" type="button" onClick={regenerate} disabled={!valid}>
+            <RefreshCw size={16} />
+            <span>Regenerate</span>
+          </button>
+          <button className="button button-primary" type="button" onClick={handleCopy} disabled={!ready}>
+            <ClipboardCopy size={16} />
+            <span>Copy coordinates</span>
+          </button>
+          <button className="button button-secondary" type="button" onClick={handleDownload} disabled={!ready}>
+            <Download size={16} />
+            <span>Download .csv</span>
+          </button>
+          <button className="button button-primary" type="button" onClick={handlePdf} disabled={!ready}>
+            <Printer size={16} />
+            <span>Download PDF report</span>
+          </button>
+          {actionMessage ? <span className="extractor-message">{actionMessage}</span> : null}
+        </div>
+      </section>
     </>
   )
 }

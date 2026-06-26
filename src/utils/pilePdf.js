@@ -132,7 +132,7 @@ export async function generatePilePdf(data) {
       doc.line(M, H - 30, W - M, H - 30)
       font('normal', 7.5)
       setText(C.faint)
-      doc.text(`EasyLEAP  ·  ${APP_URL}`, M, H - 20, { baseline: 'middle' })
+      doc.text('EasyLEAP  ·  Pile Foundation Layout', M, H - 20, { baseline: 'middle' })
       if (dateStr) {
         doc.text(dateStr, W / 2, H - 20, { align: 'center', baseline: 'middle' })
       }
