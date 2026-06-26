@@ -61,22 +61,16 @@ function gridArrangement(count, columns, aspect = 1) {
   return grid(cols, rows, cells)
 }
 
-// Generate the initial layout. Returns piles in LEAP convention plus metadata.
+// Generate the layout. Piles are spread so the outer piles sit exactly at the
+// edge distance from every face of the footing, with uniform spacing in each
+// direction (derived from the footing, the edge distance, and the arrangement
+// grid). Returns piles in LEAP convention plus metadata.
 export function generateLayout(opts) {
-  const {
-    footingX,
-    footingZ,
-    count,
-    pileSize,
-    spacing,
-    columns,
-    useGdot,
-  } = opts
+  const { footingX, footingZ, count, pileSize, edge, columns, useGdot } = opts
 
-  const sBase = spacing && spacing > 0 ? spacing : minSpacing(pileSize)
-  // GDOT details in 1 in increments, so use an integer spacing (rounded up to
-  // stay at or above the minimum).
-  const s = useGdot ? Math.ceil(sBase) : sBase
+  const e = edge > 0 ? edge : AASHTO.minEdge // pile side to footing face
+  const endOffset = e + pileSize / 2 // pile center to footing face
+
   const preset = useGdot ? GDOT_PRESETS[count] : null
   const arrangement = preset
     ? preset
@@ -88,21 +82,25 @@ export function generateLayout(opts) {
       }`
 
   const { cols, rows, cells } = arrangement
-  const groupX = (cols - 1) * s
-  const groupZ = (rows - 1) * s
-  const endX = (footingX - groupX) / 2
-  // X is measured from the left face; round the end distance once so the X
-  // grid stays integer and uniform. Z is centered on the origin, so round it
-  // symmetrically (round the magnitude) to keep top and bottom rows balanced.
-  const endXr = useGdot ? Math.round(endX) : endX
-  const round2 = (v) => Math.round(v * 100) / 100
-  const symRound = (v) => Math.sign(v) * Math.round(Math.abs(v))
+  const spanX = footingX - 2 * endOffset
+  const spanZ = footingZ - 2 * endOffset
+  const spacingX = cols > 1 ? spanX / (cols - 1) : 0
+  const spacingZ = rows > 1 ? spanZ / (rows - 1) : 0
+
+  const round = useGdot ? (v) => Math.round(v) : (v) => Math.round(v * 100) / 100
+  const symRound = useGdot
+    ? (v) => Math.sign(v) * Math.round(Math.abs(v))
+    : (v) => Math.round(v * 100) / 100
+
+  // Outer piles at the edge distance; single column/row is centered.
+  const px = (col) => (cols === 1 ? footingX / 2 : endOffset + col * spacingX)
+  const pz = (row) => (rows === 1 ? 0 : -spanZ / 2 + row * spacingZ)
 
   let piles = cells.map(([col, row]) => ({
     col,
     row,
-    x: useGdot ? endXr + col * s : round2(endX + col * s),
-    z: useGdot ? symRound(-groupZ / 2 + row * s) : round2(-groupZ / 2 + row * s),
+    x: round(px(col)),
+    z: symRound(pz(row)),
   }))
   piles.sort((a, b) => a.row - b.row || a.col - b.col)
   piles = piles.map((pile, index) => ({
@@ -113,16 +111,22 @@ export function generateLayout(opts) {
     batterX: 0,
   }))
 
+  // Minimum footing for this arrangement at the AASHTO minimum spacing.
+  const minSp = minSpacing(pileSize)
+  const reqX = (cols - 1) * minSp + 2 * endOffset
+  const reqZ = (rows - 1) * minSp + 2 * endOffset
+
   return {
     piles,
     cols,
     rows,
-    spacing: s,
+    spacingX,
+    spacingZ,
+    edge: e,
+    reqX,
+    reqZ,
     arrangementName,
     isPreset: Boolean(preset),
-    groupX,
-    groupZ,
-    endX,
   }
 }
 
@@ -205,14 +209,19 @@ export function checkCompliance({ piles, footingX, footingZ, pileSize, useGdot }
       status: square ? 'met' : 'advisory',
     })
 
-    // GDOT 4.2.5.3 / Appendix 4B — preset arrangement coverage (advisory).
-    const inPresetRange = piles.length >= 4 && piles.length <= 25
+    // GDOT 4.2.5.3 / Appendix 4B — preset arrangement coverage.
+    const encoded = GDOT_PRESETS[piles.length] != null // Figure 4B-1, 4 to 12
+    const inRange = piles.length >= 4 && piles.length <= 25
     checks.push({
       code: 'GDOT',
       clause: 'GDOT Appendix 4B',
-      label: 'Arrangement per a preset 4B layout (4 to 25 piles)',
+      label: encoded
+        ? 'Arrangement matches an encoded Figure 4B-1 preset'
+        : inRange
+          ? 'Grid approximation — verify against Figure 4B-2 / 4B-3'
+          : 'Outside the Appendix 4B range (4 to 25 piles)',
       actual: `${piles.length} piles`,
-      status: inPresetRange ? 'advisory' : 'fail',
+      status: encoded ? 'met' : inRange ? 'advisory' : 'fail',
     })
   }
 

@@ -95,7 +95,7 @@ export function PileLayout() {
   const [count, setCount] = useState('4')
   const [pileSize, setPileSize] = useState('14')
   const [pileType, setPileType] = useState('Steel H-pile')
-  const [spacing, setSpacing] = useState('')
+  const [edge, setEdge] = useState('9')
   const [columns, setColumns] = useState('')
   const [useGdot, setUseGdot] = useState(true)
   const [piles, setPiles] = useState([])
@@ -106,7 +106,7 @@ export function PileLayout() {
   const fZ = num(footingZ)
   const N = Math.max(0, Math.round(num(count)))
   const D = num(pileSize)
-  const S = spacing.trim() === '' ? 0 : num(spacing)
+  const E = edge.trim() === '' ? 9 : num(edge, 9)
   const cols = columns.trim() === '' ? 0 : Math.round(num(columns))
   const valid = fX > 0 && fZ > 0 && N >= 1 && D > 0
 
@@ -123,14 +123,14 @@ export function PileLayout() {
       footingZ: fZ,
       count: N,
       pileSize: D,
-      spacing: S,
+      edge: E,
       columns: cols,
       useGdot,
     })
     setPiles(result.piles)
     setMeta(result)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fX, fZ, N, D, S, cols, useGdot])
+  }, [fX, fZ, N, D, E, cols, useGdot])
 
   const compliance = useMemo(
     () =>
@@ -166,7 +166,7 @@ export function PileLayout() {
       footingZ: fZ,
       count: N,
       pileSize: D,
-      spacing: S,
+      edge: E,
       columns: cols,
       useGdot,
     })
@@ -210,7 +210,12 @@ export function PileLayout() {
     setActionMessage('Downloaded pile-coordinates.csv.')
   }
 
-  const reqSpacing = D > 0 ? minSpacing(D) : 0
+  const reqSp = D > 0 ? minSpacing(D) : 0
+  const spacingText = meta
+    ? Math.abs(meta.spacingX - meta.spacingZ) < 0.05
+      ? meta.spacingX.toFixed(1)
+      : `${meta.spacingX.toFixed(1)} (X) / ${meta.spacingZ.toFixed(1)} (Z)`
+    : ''
 
   return (
     <>
@@ -282,16 +287,13 @@ export function PileLayout() {
             </select>
           </label>
           <label className="field">
-            <span className="field-label">
-              Spacing c/c (in){reqSpacing ? ` — min ${reqSpacing}` : ''}
-            </span>
+            <span className="field-label">Edge distance, side to face (in)</span>
             <input
               className="field-input"
               type="number"
               min="0"
-              placeholder={reqSpacing ? `${reqSpacing} (auto)` : 'auto'}
-              value={spacing}
-              onChange={(event) => setSpacing(event.target.value)}
+              value={edge}
+              onChange={(event) => setEdge(event.target.value)}
             />
           </label>
           <label className="field">
@@ -362,10 +364,16 @@ export function PileLayout() {
             <div>
               <h3>Layout &amp; Coordinates</h3>
               <p>
-                {meta?.arrangementName}. Spacing {meta?.spacing} in.{' '}
+                {meta?.arrangementName}.{' '}
+                {meta
+                  ? `Spacing ${spacingText} in c/c, edge ${meta.edge} in on all sides. `
+                  : ''}
                 {meta?.isPreset
-                  ? 'GDOT Appendix 4B preset.'
-                  : 'Rectangular grid.'}{' '}
+                  ? 'GDOT Appendix 4B preset. '
+                  : 'Rectangular grid. '}
+                {meta
+                  ? `Minimum footing at min spacing (${reqSp} in) is ${meta.reqX} x ${meta.reqZ} in. `
+                  : ''}
                 Edit any X or Z to adjust; the checks below update live.
               </p>
             </div>
