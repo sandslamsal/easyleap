@@ -1406,3 +1406,259 @@
     text-align: left;
   }
 }
+
+/* ---------- pile layout ---------- */
+.pile-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.pile-gdot-field {
+  min-width: 240px;
+}
+
+.pile-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 38px;
+}
+
+.pile-code-mandatory {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+.pile-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+.pile-diagram {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 8px;
+}
+
+.pile-diagram svg {
+  width: 100%;
+  height: auto;
+}
+
+.pile-footing {
+  fill: rgba(31, 95, 166, 0.04);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.pile-axis {
+  stroke: var(--danger);
+  stroke-width: 1.2;
+}
+
+.pile-axis-label {
+  fill: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pile-marker {
+  fill: var(--accent);
+  stroke: var(--accent-strong);
+  stroke-width: 0.75;
+}
+
+.pile-marker-bad {
+  fill: var(--danger);
+  stroke: #7c241c;
+}
+
+.pile-number {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.pile-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.pile-table th,
+.pile-table td {
+  text-align: center;
+  padding: 5px 8px;
+}
+
+.pile-table th.reaction-table-label,
+.pile-table td.reaction-table-label {
+  text-align: center !important;
+}
+
+.pile-cell-input {
+  width: 78px;
+  min-height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.84rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pile-cell-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(31, 95, 166, 0.12);
+}
+
+/* compliance panel */
+.compliance-panel {
+  margin-top: 16px;
+}
+
+.compliance-panel h4 {
+  margin: 0 0 8px;
+  font-size: 0.96rem;
+  color: var(--text);
+}
+
+.compliance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.compliance-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 7px;
+  font-size: 0.86rem;
+}
+
+.compliance-item svg {
+  flex-shrink: 0;
+}
+
+.compliance-met {
+  background: #edf7f1;
+  border-left-color: var(--success);
+}
+
+.compliance-met svg {
+  color: var(--success);
+}
+
+.compliance-fail {
+  background: #fbeeec;
+  border-left-color: var(--danger);
+}
+
+.compliance-fail svg {
+  color: var(--danger);
+}
+
+.compliance-advisory {
+  background: #fdf3e8;
+  border-left-color: var(--warning);
+}
+
+.compliance-advisory svg {
+  color: var(--warning);
+}
+
+.compliance-code {
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  min-width: 52px;
+}
+
+.compliance-label {
+  flex: 1;
+  color: var(--text);
+}
+
+.compliance-clause {
+  color: var(--text-soft);
+  font-size: 0.8rem;
+}
+
+.compliance-actual {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* spec panel */
+.spec-block {
+  margin-top: 14px;
+}
+
+.spec-block-muted {
+  opacity: 0.55;
+}
+
+.spec-block h4 {
+  margin: 0 0 8px;
+  font-size: 0.96rem;
+  color: var(--text);
+}
+
+.spec-item {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fafbfc;
+  margin-bottom: 8px;
+}
+
+.spec-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.spec-item-head strong {
+  color: var(--accent-strong);
+  font-size: 0.88rem;
+}
+
+.spec-item-head span {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.spec-item p {
+  margin: 5px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .pile-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}

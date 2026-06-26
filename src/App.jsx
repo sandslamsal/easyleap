@@ -6,6 +6,7 @@ import {
   Eraser,
   Eye,
   Layers3,
+  LayoutGrid,
   Pill,
   SquareStack,
   WandSparkles,
@@ -13,6 +14,7 @@ import {
 import './App.css'
 import { PreviewPanel } from './components/PreviewPanel.jsx'
 import { SuperstructureExtractor } from './components/SuperstructureExtractor.jsx'
+import { PileLayout } from './components/PileLayout.jsx'
 import { RemapSettings } from './components/RemapSettings.jsx'
 import { SectionEditor } from './components/SectionEditor.jsx'
 import { StatusBanner } from './components/StatusBanner.jsx'
@@ -674,10 +676,24 @@ function App() {
           <Building2 size={16} />
           <span>Superstructure Loads</span>
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={appMode === 'pile'}
+          className={`mode-toggle-button ${
+            appMode === 'pile' ? 'mode-toggle-active' : ''
+          }`}
+          onClick={() => setAppMode('pile')}
+        >
+          <LayoutGrid size={16} />
+          <span>Pile Layout</span>
+        </button>
       </div>
 
       {appMode === 'extractor' ? (
         <SuperstructureExtractor />
+      ) : appMode === 'pile' ? (
+        <PileLayout />
       ) : (
         <>
       <section className="toolbar-card">
