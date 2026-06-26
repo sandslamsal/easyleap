@@ -1435,57 +1435,172 @@
 
 .pile-layout-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(320px, 1.5fr) minmax(220px, 0.9fr);
   gap: 16px;
   margin-top: 14px;
   align-items: start;
 }
 
-.pile-diagram {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fbfcfe;
-  padding: 8px;
+/* ---------- professional CAD-style pile diagram ---------- */
+:root {
+  --pile-canvas-bg: #f5f7fa;
+  --pile-foundation: #374151;
+  --pile-fill-a: #3b82f6;
+  --pile-fill-b: #2563eb;
+  --pile-border: #1d4ed8;
+  --pile-axis: #d14343;
+  --pile-centroid: #e53935;
+  --pile-centroid-cross: #7a8796;
+  --pile-grid: rgba(0, 0, 0, 0.045);
+  --pile-pill-border: #d6dce5;
+  --pile-label: #111827;
 }
 
-.pile-diagram svg {
+.pile-canvas {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--pile-canvas-bg);
+  padding: 10px;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.pile-canvas-svg {
+  display: block;
   width: 100%;
   height: auto;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
-.pile-footing {
-  fill: rgba(31, 95, 166, 0.04);
-  stroke: var(--text-muted);
+.pile-canvas-bg {
+  fill: var(--pile-canvas-bg);
+}
+
+.pile-grid-line {
+  fill: none;
+  stroke: var(--pile-grid);
   stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
-.pile-axis {
-  stroke: var(--danger);
-  stroke-width: 1.2;
+.pile-foundation {
+  fill: #ffffff;
+  stroke: var(--pile-foundation);
+  stroke-width: 2.4;
+  vector-effect: non-scaling-stroke;
 }
 
-.pile-axis-label {
-  fill: var(--danger);
-  font-size: 11px;
-  font-weight: 700;
+.pile-grad-a {
+  stop-color: var(--pile-fill-a);
 }
 
-.pile-marker {
-  fill: var(--accent);
-  stroke: var(--accent-strong);
-  stroke-width: 0.75;
+.pile-grad-b {
+  stop-color: var(--pile-fill-b);
 }
 
-.pile-marker-bad {
+.pile-node {
+  cursor: pointer;
+}
+
+.pile-node-body {
+  fill: url(#pileGrad);
+  stroke: var(--pile-border);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  filter: url(#pileShadow);
+  transition: transform 170ms ease, stroke-width 170ms ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pile-node:hover .pile-node-body {
+  transform: scale(1.08);
+  stroke-width: 2.4;
+}
+
+.pile-node.is-selected .pile-node-body {
+  stroke: var(--pile-fill-b);
+  stroke-width: 3.2;
+}
+
+.pile-node.is-bad .pile-node-body {
   fill: var(--danger);
   stroke: #7c241c;
 }
 
-.pile-number {
-  fill: var(--text);
-  font-size: 11px;
-  font-weight: 700;
+.pile-node-web line {
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.pile-pill rect {
+  fill: #ffffff;
+  stroke: var(--pile-pill-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  filter: url(#pileShadow);
+}
+
+.pile-pill text {
+  fill: var(--pile-label);
   text-anchor: middle;
+  font-weight: 600;
+}
+
+.pile-axis-line {
+  stroke: var(--pile-axis);
+  stroke-width: 2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.pile-axis-arrow {
+  fill: var(--pile-axis);
+}
+
+.pile-axis-badge circle {
+  fill: var(--pile-axis);
+  filter: url(#pileShadow);
+}
+
+.pile-axis-badge text {
+  fill: #ffffff;
+  text-anchor: middle;
+  font-weight: 700;
+}
+
+.pile-centroid-cross {
+  stroke: var(--pile-centroid-cross);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.pile-centroid-dot {
+  fill: var(--pile-centroid);
+}
+
+.pile-dim-ext,
+.pile-dim-line {
+  stroke: #9aa3af;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pile-dim-arrow {
+  fill: #9aa3af;
+}
+
+.pile-dim-text rect {
+  fill: #ffffff;
+  stroke: var(--pile-pill-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pile-dim-text text {
+  fill: var(--text-muted);
+  text-anchor: middle;
+  font-weight: 600;
 }
 
 .pile-table-wrap {
@@ -1660,5 +1775,118 @@
 @media (max-width: 760px) {
   .pile-layout-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- pile layout polish ---------- */
+.pile-h line {
+  stroke: var(--accent);
+  stroke-linecap: round;
+}
+.pile-h.pile-marker-bad line {
+  stroke: var(--danger);
+}
+.pile-dim {
+  fill: var(--text-muted);
+  text-anchor: middle;
+  font-weight: 600;
+}
+.pile-axis-head {
+  fill: var(--danger);
+}
+.pile-code-locked {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Excel-style editable coordinate grid */
+.pile-grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+}
+.pile-grid th,
+.pile-grid td {
+  border: 1px solid var(--border-strong);
+}
+.pile-grid thead th {
+  background: var(--surface-strong);
+  padding: 6px 10px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pile-grid td {
+  padding: 0;
+  text-align: right;
+}
+.pile-grid td.pile-idx {
+  width: 48px;
+  text-align: center;
+  font-weight: 600;
+  background: var(--surface-strong);
+  color: var(--text-muted);
+  padding: 5px 8px;
+}
+.pile-grid td input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  text-align: right;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.pile-grid td input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: #eef4fb;
+}
+
+/* ---------- pile layout: print report ---------- */
+@media print {
+  .print-pile-row {
+    display: flex;
+    gap: 18pt;
+    align-items: flex-start;
+    margin: 8pt 0 4pt;
+    page-break-inside: avoid;
+  }
+  .print-pile-row .pile-canvas {
+    flex: 1.2;
+    border: 0.5pt solid #d6dce5;
+    padding: 4pt;
+    background: #fff;
+    box-shadow: none;
+  }
+  .print-pile-row .pile-canvas-svg {
+    max-height: 320pt;
+  }
+  .print-report .pile-grid {
+    width: auto;
+    min-width: 150pt;
+    font-size: 9pt;
+  }
+  .print-report .pile-grid th,
+  .print-report .pile-grid td {
+    border: 0.5pt solid #999;
+    padding: 2.5pt 8pt;
+  }
+  .print-report .pile-grid thead th {
+    border-color: #333;
+    background: #eee;
+  }
+  .print-report .pile-grid td.pile-idx {
+    background: #f2f2f2;
+  }
+  .print-report .compliance-list {
+    page-break-inside: avoid;
+  }
+  .print-report .compliance-item {
+    background: #fff !important;
+    border: 0.5pt solid #bbb;
   }
 }
