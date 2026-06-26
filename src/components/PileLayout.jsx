@@ -95,8 +95,10 @@ export function PileLayout() {
   const [count, setCount] = useState('4')
   const [pileSize, setPileSize] = useState('14')
   const [pileType, setPileType] = useState('Steel H-pile')
-  const [edge, setEdge] = useState('9')
+  const [edge, setEdge] = useState('12')
+  const [spacing, setSpacing] = useState('')
   const [columns, setColumns] = useState('')
+  const [fit, setFit] = useState(true)
   const [useGdot, setUseGdot] = useState(true)
   const [piles, setPiles] = useState([])
   const [meta, setMeta] = useState(null)
@@ -106,9 +108,10 @@ export function PileLayout() {
   const fZ = num(footingZ)
   const N = Math.max(0, Math.round(num(count)))
   const D = num(pileSize)
-  const E = edge.trim() === '' ? 9 : num(edge, 9)
+  const E = edge.trim() === '' ? 12 : num(edge, 12)
+  const SP = spacing.trim() === '' ? 0 : num(spacing)
   const cols = columns.trim() === '' ? 0 : Math.round(num(columns))
-  const valid = fX > 0 && fZ > 0 && N >= 1 && D > 0
+  const valid = N >= 1 && D > 0 && (fit || (fX > 0 && fZ > 0))
 
   // Regenerate the layout whenever an input changes. Manual coordinate edits
   // persist until an input is changed again.
@@ -124,26 +127,32 @@ export function PileLayout() {
       count: N,
       pileSize: D,
       edge: E,
+      spacing: SP,
       columns: cols,
       useGdot,
+      fit,
     })
     setPiles(result.piles)
     setMeta(result)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fX, fZ, N, D, E, cols, useGdot])
+  }, [fX, fZ, N, D, E, SP, cols, useGdot, fit])
+
+  // Footing actually used (computed in fit mode, otherwise the entered value).
+  const usedFX = meta?.footingX ?? fX
+  const usedFZ = meta?.footingZ ?? fZ
 
   const compliance = useMemo(
     () =>
-      valid
+      valid && meta
         ? checkCompliance({
             piles,
-            footingX: fX,
-            footingZ: fZ,
+            footingX: usedFX,
+            footingZ: usedFZ,
             pileSize: D,
             useGdot,
           })
         : [],
-    [piles, fX, fZ, D, useGdot, valid],
+    [piles, usedFX, usedFZ, D, useGdot, valid, meta],
   )
 
   const updatePile = (n, field, value) => {
@@ -167,8 +176,10 @@ export function PileLayout() {
       count: N,
       pileSize: D,
       edge: E,
+      spacing: SP,
       columns: cols,
       useGdot,
+      fit,
     })
     setPiles(result.piles)
     setMeta(result)
@@ -234,24 +245,41 @@ export function PileLayout() {
         </div>
 
         <div className="pile-input-grid">
+          <label className="field pile-fit-field">
+            <span className="field-label">Footing size</span>
+            <label className="section-toggle">
+              <input
+                type="checkbox"
+                checked={fit}
+                onChange={(event) => setFit(event.target.checked)}
+              />
+              <span>Fit to piles</span>
+            </label>
+          </label>
           <label className="field">
-            <span className="field-label">Footing width, X (in)</span>
+            <span className="field-label">
+              Footing width, X (in){fit ? ' (fit)' : ''}
+            </span>
             <input
               className="field-input"
               type="number"
               min="0"
-              value={footingX}
+              value={fit ? (meta ? `${meta.footingX}` : '') : footingX}
               onChange={(event) => setFootingX(event.target.value)}
+              disabled={fit}
             />
           </label>
           <label className="field">
-            <span className="field-label">Footing depth, Z (in)</span>
+            <span className="field-label">
+              Footing depth, Z (in){fit ? ' (fit)' : ''}
+            </span>
             <input
               className="field-input"
               type="number"
               min="0"
-              value={footingZ}
+              value={fit ? (meta ? `${meta.footingZ}` : '') : footingZ}
               onChange={(event) => setFootingZ(event.target.value)}
+              disabled={fit}
             />
           </label>
           <label className="field">
@@ -294,6 +322,18 @@ export function PileLayout() {
               min="0"
               value={edge}
               onChange={(event) => setEdge(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Spacing c/c (in)</span>
+            <input
+              className="field-input"
+              type="number"
+              min="0"
+              placeholder={reqSp ? `${reqSp} (min)` : 'min'}
+              value={spacing}
+              onChange={(event) => setSpacing(event.target.value)}
+              disabled={!fit}
             />
           </label>
           <label className="field">
@@ -382,8 +422,8 @@ export function PileLayout() {
           <div className="pile-layout-grid">
             <PileDiagram
               piles={piles}
-              footingX={fX}
-              footingZ={fZ}
+              footingX={usedFX}
+              footingZ={usedFZ}
               pileSize={D}
             />
 

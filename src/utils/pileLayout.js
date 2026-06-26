@@ -66,15 +66,18 @@ function gridArrangement(count, columns, aspect = 1) {
 // direction (derived from the footing, the edge distance, and the arrangement
 // grid). Returns piles in LEAP convention plus metadata.
 export function generateLayout(opts) {
-  const { footingX, footingZ, count, pileSize, edge, columns, useGdot } = opts
+  const { count, pileSize, edge, columns, useGdot, fit } = opts
 
   const e = edge > 0 ? edge : AASHTO.minEdge // pile side to footing face
   const endOffset = e + pileSize / 2 // pile center to footing face
 
   const preset = useGdot ? GDOT_PRESETS[count] : null
-  const arrangement = preset
-    ? preset
-    : gridArrangement(count, columns, footingZ > 0 ? footingX / footingZ : 1)
+  const aspect = fit
+    ? 1
+    : opts.footingZ > 0
+      ? opts.footingX / opts.footingZ
+      : 1
+  const arrangement = preset ? preset : gridArrangement(count, columns, aspect)
   const arrangementName = preset
     ? `GDOT Appendix 4B: ${GDOT_ARRANGEMENT_NAMES[count]}`
     : `${arrangement.cols} x ${arrangement.rows} grid${
@@ -82,19 +85,51 @@ export function generateLayout(opts) {
       }`
 
   const { cols, rows, cells } = arrangement
-  const spanX = footingX - 2 * endOffset
-  const spanZ = footingZ - 2 * endOffset
-  const spacingX = cols > 1 ? spanX / (cols - 1) : 0
-  const spacingZ = rows > 1 ? spanZ / (rows - 1) : 0
 
   const round = useGdot ? (v) => Math.round(v) : (v) => Math.round(v * 100) / 100
   const symRound = useGdot
     ? (v) => Math.sign(v) * Math.round(Math.abs(v))
     : (v) => Math.round(v * 100) / 100
 
-  // Outer piles at the edge distance; single column/row is centered.
-  const px = (col) => (cols === 1 ? footingX / 2 : endOffset + col * spacingX)
-  const pz = (row) => (rows === 1 ? 0 : -spanZ / 2 + row * spacingZ)
+  let footingX
+  let footingZ
+  let spacingX
+  let spacingZ
+  let px
+  let pz
+  if (fit) {
+    // Fit mode: piles at the design spacing (default = AASHTO minimum),
+    // footing sized to fit and rounded; the edge takes any rounding slack.
+    let s = opts.spacing > 0 ? opts.spacing : minSpacing(pileSize)
+    if (useGdot) {
+      s = Math.ceil(s)
+    }
+    const groupX = (cols - 1) * s
+    const groupZ = (rows - 1) * s
+    const up3 = (v) => Math.ceil(v / 3) * 3 // GDOT 3 in footing increments
+    footingX = useGdot
+      ? up3(groupX + 2 * endOffset)
+      : Math.round((groupX + 2 * endOffset) * 100) / 100
+    footingZ = useGdot
+      ? up3(groupZ + 2 * endOffset)
+      : Math.round((groupZ + 2 * endOffset) * 100) / 100
+    const endX = (footingX - groupX) / 2
+    spacingX = cols > 1 ? s : 0
+    spacingZ = rows > 1 ? s : 0
+    px = (col) => (cols === 1 ? footingX / 2 : endX + col * s)
+    pz = (row) => (rows === 1 ? 0 : -groupZ / 2 + row * s)
+  } else {
+    // Given footing: spread piles so the outer piles sit exactly at the edge
+    // distance from every face; spacing is derived.
+    footingX = opts.footingX
+    footingZ = opts.footingZ
+    const spanX = footingX - 2 * endOffset
+    const spanZ = footingZ - 2 * endOffset
+    spacingX = cols > 1 ? spanX / (cols - 1) : 0
+    spacingZ = rows > 1 ? spanZ / (rows - 1) : 0
+    px = (col) => (cols === 1 ? footingX / 2 : endOffset + col * spacingX)
+    pz = (row) => (rows === 1 ? 0 : -spanZ / 2 + row * spacingZ)
+  }
 
   let piles = cells.map(([col, row]) => ({
     col,
@@ -125,6 +160,9 @@ export function generateLayout(opts) {
     edge: e,
     reqX,
     reqZ,
+    footingX,
+    footingZ,
+    fit: Boolean(fit),
     arrangementName,
     isPreset: Boolean(preset),
   }
