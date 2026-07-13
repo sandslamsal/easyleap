@@ -186,6 +186,9 @@ export function SuperstructureExtractor() {
   const [actionMessage, setActionMessage] = useState('')
   const [bearingLine, setBearingLine] = useState('1')
   const [bothSides, setBothSides] = useState(true)
+  const [project, setProject] = useState({ name: '', engineer: '', job: '' })
+  const [pageSize, setPageSize] = useState('letter')
+  const [includeLogo, setIncludeLogo] = useState(true)
 
   const doneFiles = useMemo(
     () => files.filter((file) => file.status === 'done' && file.result),
@@ -384,6 +387,41 @@ export function SuperstructureExtractor() {
       setActionMessage(`Copied ${def.key} bearing loads to the clipboard.`)
     } catch {
       setActionMessage('Clipboard copy failed in this browser session.')
+    }
+  }
+
+  const handleGeneratePdf = async () => {
+    if (!hasResults) {
+      return
+    }
+    setActionMessage('Generating PDF report...')
+    try {
+      const { generateSuperstructurePdf } = await import(
+        '../utils/superstructurePdf.js'
+      )
+      const now = new Date()
+      const dateStr = now.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+      await generateSuperstructurePdf({
+        files: doneFiles,
+        envelopeTable,
+        caseSpans,
+        multiSpan,
+        project,
+        pageSize,
+        dateStr,
+        includeLogo,
+      })
+      setActionMessage('PDF report downloaded.')
+    } catch (error) {
+      setActionMessage(
+        `PDF generation failed: ${
+          error instanceof Error ? error.message : error
+        }`,
+      )
     }
   }
 
@@ -651,6 +689,93 @@ export function SuperstructureExtractor() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      ) : null}
+
+      {hasResults ? (
+        <section className="toolbar-card">
+          <div className="results-head">
+            <FileText size={18} />
+            <div>
+              <h3>Report &amp; Export</h3>
+              <p>
+                Project details below appear on the PDF report. It uses the
+                EasyLEAP report template — the same header, logo, and layout as
+                the Pile Cap report — with your bearing-reaction and load-case
+                tables.
+              </p>
+            </div>
+          </div>
+
+          <div className="pile-report-grid">
+            <label className="field">
+              <span className="field-label">Project name (for report)</span>
+              <input
+                className="field-input"
+                type="text"
+                placeholder="optional"
+                value={project.name}
+                onChange={(e) =>
+                  setProject((p) => ({ ...p, name: e.target.value }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Prepared by</span>
+              <input
+                className="field-input"
+                type="text"
+                placeholder="optional"
+                value={project.engineer}
+                onChange={(e) =>
+                  setProject((p) => ({ ...p, engineer: e.target.value }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Job No.</span>
+              <input
+                className="field-input"
+                type="text"
+                placeholder="optional"
+                value={project.job}
+                onChange={(e) =>
+                  setProject((p) => ({ ...p, job: e.target.value }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Page size</span>
+              <select
+                className="field-input"
+                value={pageSize}
+                onChange={(e) => setPageSize(e.target.value)}
+              >
+                <option value="letter">US Letter</option>
+                <option value="a4">A4</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="action-cluster extractor-actions">
+            <label className="section-toggle case-toggle">
+              <input
+                type="checkbox"
+                checked={includeLogo}
+                onChange={(e) => setIncludeLogo(e.target.checked)}
+              />
+              <span>Include EasyLEAP logo</span>
+            </label>
+            <button
+              className="button button-primary"
+              type="button"
+              onClick={handleGeneratePdf}
+              disabled={!hasResults || isParsing}
+            >
+              <FileText size={16} />
+              <span>Download PDF report</span>
+            </button>
           </div>
         </section>
       ) : null}

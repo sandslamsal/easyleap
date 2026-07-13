@@ -5,46 +5,17 @@
 // text, so the output stays crisp at any zoom. The module takes plain data and
 // has no DOM dependency, which also lets it be rendered head-less for testing.
 
-export const APP_VERSION = '1.0'
-export const APP_URL = 'sandeshlamsal.com/apps'
+import {
+  C,
+  ftIn,
+  fmt,
+  T,
+  drawHeader as drawReportHeader,
+  stampFooters as stampReportFooters,
+} from './reportChrome.js'
 
-// ---- palette (RGB) ----
-const C = {
-  band: [30, 58, 138], // deep engineering blue
-  bandAccent: [59, 130, 246],
-  accent: [37, 99, 235],
-  accentDeep: [29, 78, 216],
-  ink: [17, 24, 39],
-  sub: [75, 85, 99],
-  faint: [156, 163, 175],
-  line: [209, 214, 222],
-  cardFill: [241, 245, 251],
-  cardBorder: [214, 221, 232],
-  foundation: [55, 65, 81],
-  white: [255, 255, 255],
-  zebra: [244, 247, 251],
-  green: [22, 127, 55],
-  red: [180, 35, 24],
-  amber: [178, 94, 9],
-  gridline: [226, 232, 240],
-}
-
-const ftIn = (inches) => {
-  const ft = Math.floor(inches / 12)
-  const rem = Math.round(inches - ft * 12)
-  return `${ft}'-${rem}"`
-}
-const fmt = (v) => (Number.isInteger(v) ? `${v}` : v.toFixed(2))
-
-// jsPDF's standard fonts use WinAnsi encoding; map the few non-ASCII symbols
-// that appear in code labels to safe equivalents so they render.
-const T = (s) =>
-  String(s)
-    .replace(/≥/g, '>=')
-    .replace(/≤/g, '<=')
-    .replace(/[—–]/g, '-')
-    .replace(/×/g, 'x')
-    .replace(/≈/g, '~')
+// Re-exported so existing importers keep working after the chrome extraction.
+export { APP_VERSION, APP_URL } from './reportChrome.js'
 
 export async function generatePilePdf(data) {
   const { jsPDF } = await import('jspdf')
@@ -60,6 +31,7 @@ export async function generatePilePdf(data) {
     pageSize = 'letter',
     dateStr = '',
     useGdot = true,
+    includeLogo = true,
   } = data
 
   const doc = new jsPDF({ unit: 'pt', format: pageSize, compress: true })
@@ -87,61 +59,26 @@ export async function generatePilePdf(data) {
     return { size: 8.5, lines: doc.splitTextToSize(text, maxW).slice(0, 2) }
   }
 
-  // ---- repeating header band ----
-  const drawHeader = () => {
-    setFill(C.band)
-    doc.rect(0, 0, W, 58, 'F')
-    setFill(C.bandAccent)
-    doc.rect(0, 58, W, 3, 'F')
-    // logo mark: rounded square with a pile glyph
-    setFill(C.white)
-    doc.roundedRect(M, 16, 26, 26, 5, 5, 'F')
-    setDraw(C.accent)
-    doc.setLineWidth(2)
-    doc.line(M + 8, 22, M + 8, 36)
-    doc.line(M + 18, 22, M + 18, 36)
-    doc.line(M + 8, 29, M + 18, 29)
-    // wordmark
-    setText(C.white)
-    font('bold', 17)
-    doc.text('EasyLEAP', M + 36, 28, { baseline: 'middle' })
-    font('normal', 8.5)
-    doc.setTextColor(206, 219, 245)
-    doc.text('Pile Foundation Layout', M + 36, 42, { baseline: 'middle' })
-    // right block
-    setText(C.white)
-    font('bold', 12)
-    doc.text('PILE CAP LAYOUT REPORT', W - M, 25, { align: 'right', baseline: 'middle' })
-    font('normal', 8.5)
-    doc.setTextColor(206, 219, 245)
-    doc.text(
-      `AASHTO LRFD 10.7.1.2${useGdot ? '  +  GDOT Appendix 4B' : ''}`,
-      W - M,
-      40,
-      { align: 'right', baseline: 'middle' },
-    )
-  }
+  // ---- repeating header band (shared EasyLEAP chrome) ----
+  const drawHeader = () =>
+    drawReportHeader(doc, {
+      W,
+      M,
+      includeLogo,
+      subtitle: 'Pile Foundation Layout',
+      title: 'PILE CAP LAYOUT REPORT',
+      reference: `AASHTO LRFD 10.7.1.2${useGdot ? '  +  GDOT Appendix 4B' : ''}`,
+    })
 
   // footer text is stamped after total pages are known
-  const stampFooters = () => {
-    const total = doc.getNumberOfPages()
-    for (let p = 1; p <= total; p += 1) {
-      doc.setPage(p)
-      setDraw(C.line)
-      doc.setLineWidth(0.6)
-      doc.line(M, H - 30, W - M, H - 30)
-      font('normal', 7.5)
-      setText(C.faint)
-      doc.text('EasyLEAP  ·  Pile Foundation Layout', M, H - 20, { baseline: 'middle' })
-      if (dateStr) {
-        doc.text(dateStr, W / 2, H - 20, { align: 'center', baseline: 'middle' })
-      }
-      doc.text(`Page ${p} of ${total}  ·  v${APP_VERSION}`, W - M, H - 20, {
-        align: 'right',
-        baseline: 'middle',
-      })
-    }
-  }
+  const stampFooters = () =>
+    stampReportFooters(doc, {
+      W,
+      H,
+      M,
+      dateStr,
+      label: 'EasyLEAP  ·  Pile Foundation Layout',
+    })
 
   let y = contentTop
   const newPage = () => {

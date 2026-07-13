@@ -326,6 +326,7 @@ export function PileLayout() {
   const [selected, setSelected] = useState(null)
   const [project, setProject] = useState({ name: '', engineer: '', job: '' })
   const [pageSize, setPageSize] = useState('letter')
+  const [includeLogo, setIncludeLogo] = useState(true)
 
   // Footing is entered in feet; the engine and coordinates work in inches.
   const fXin = num(footingX) * 12
@@ -450,6 +451,7 @@ export function PileLayout() {
         pageSize,
         dateStr,
         useGdot,
+        includeLogo,
       })
       setActionMessage('PDF report downloaded.')
     } catch (error) {
@@ -668,6 +670,10 @@ export function PileLayout() {
         </div>
 
         <div className="action-cluster extractor-actions">
+          <label className="section-toggle case-toggle">
+            <input type="checkbox" checked={includeLogo} onChange={(e) => setIncludeLogo(e.target.checked)} />
+            <span>Include EasyLEAP logo</span>
+          </label>
           <button className="button button-secondary" type="button" onClick={regenerate} disabled={!valid}>
             <RefreshCw size={16} />
             <span>Regenerate</span>
