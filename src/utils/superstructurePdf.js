@@ -22,6 +22,7 @@ export async function generateSuperstructurePdf(data) {
     envelopeTable,
     caseSpans = [],
     multiSpan = false,
+    bothSides = false,
     project = {},
     pageSize = 'letter',
     dateStr = '',
@@ -220,7 +221,7 @@ export async function generateSuperstructurePdf(data) {
       ['Source Files', `${files.length}`],
       ['Beams', `${envelopeTable?.beams?.length ?? 0}`],
       ['Spans', `${caseSpans.length}`],
-      ['Load Cases', 'DC1 / DC2 / DC / DW'],
+      ['Bearing Lines', `${multiSpan ? caseSpans.length : bothSides ? 2 : 1}`],
     ]
     const cols = 4
     const gap = 10
@@ -269,11 +270,19 @@ export async function generateSuperstructurePdf(data) {
     )
   }
 
-  // LEAP load cases per span
+  // LEAP load cases per span / bearing line
   sectionTitle('LEAP Load Cases (DC1 / DC2 / DC / DW)', 60)
   caseSpans.forEach((span) => {
-    const title = multiSpan ? `Span ${span.tag}` : 'Per-beam case totals'
-    subHeading(`${title}  -  bearing line ${span.line}  (${span.fileCount} file(s))`)
+    let heading
+    if (multiSpan) {
+      heading = `Span ${span.tag}  -  bearing line ${span.line}`
+    } else if (bothSides) {
+      // "Both sides of cap" duplicates the same reactions onto the next line.
+      heading = `Per-beam case totals  -  both sides of cap, bearing lines ${span.line} & ${span.line + 1}`
+    } else {
+      heading = `Per-beam case totals  -  bearing line ${span.line}`
+    }
+    subHeading(`${heading}  (${span.fileCount} file(s))`)
     drawTable(['Beam', ...LOAD_CASE_DEFS.map((d) => d.label)], caseRows(span))
   })
 

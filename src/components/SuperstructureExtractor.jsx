@@ -410,6 +410,7 @@ export function SuperstructureExtractor() {
         envelopeTable,
         caseSpans,
         multiSpan,
+        bothSides,
         project,
         pageSize,
         dateStr,
