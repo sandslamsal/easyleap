@@ -77,7 +77,9 @@ export async function generatePilePdf(data) {
       H,
       M,
       dateStr,
-      label: 'EasyLEAP  ·  Pile Foundation Layout',
+      label: includeLogo
+        ? 'EasyLEAP  ·  Pile Foundation Layout'
+        : 'Pile Foundation Layout',
     })
 
   let y = contentTop

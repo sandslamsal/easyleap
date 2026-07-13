@@ -61,7 +61,9 @@ export async function generateSuperstructurePdf(data) {
       H,
       M,
       dateStr,
-      label: 'EasyLEAP  ·  Superstructure Loads',
+      label: includeLogo
+        ? 'EasyLEAP  ·  Superstructure Loads'
+        : 'Superstructure Loads',
     })
 
   let y = contentTop
