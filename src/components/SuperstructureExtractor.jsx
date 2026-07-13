@@ -510,33 +510,6 @@ export function SuperstructureExtractor() {
 
         <div className="action-cluster extractor-actions">
           <button
-            className="button button-primary"
-            type="button"
-            onClick={handleCopy}
-            disabled={!hasResults || isParsing}
-          >
-            <ClipboardCopy size={16} />
-            <span>Copy All (Excel)</span>
-          </button>
-          <button
-            className="button button-secondary"
-            type="button"
-            onClick={handleDownload}
-            disabled={!hasResults || isParsing}
-          >
-            <FileSpreadsheet size={16} />
-            <span>Download .xlsx</span>
-          </button>
-          <button
-            className="button button-secondary"
-            type="button"
-            onClick={() => window.print()}
-            disabled={!hasResults || isParsing}
-          >
-            <Printer size={16} />
-            <span>Print / PDF</span>
-          </button>
-          <button
             className="button button-secondary"
             type="button"
             onClick={handleClearAll}
@@ -759,6 +732,33 @@ export function SuperstructureExtractor() {
           </div>
 
           <div className="action-cluster extractor-actions">
+            <button
+              className="button button-primary"
+              type="button"
+              onClick={handleCopy}
+              disabled={!hasResults || isParsing}
+            >
+              <ClipboardCopy size={16} />
+              <span>Copy All (Excel)</span>
+            </button>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={handleDownload}
+              disabled={!hasResults || isParsing}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Download .xlsx</span>
+            </button>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={() => window.print()}
+              disabled={!hasResults || isParsing}
+            >
+              <Printer size={16} />
+              <span>Print / PDF</span>
+            </button>
             <label className="section-toggle case-toggle">
               <input
                 type="checkbox"
