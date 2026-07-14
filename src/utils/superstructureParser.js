@@ -82,136 +82,6 @@ function isNumeric(token) {
   return /^-?\d+(\.\d+)?$/.test(token)
 }
 
-// Parse a single page's rows into one envelope record, or null if the page is
-// not a SERVICE-I-style envelope (or limitState filter rejects it).
-export function parseEnvelopeRows(rows, { limitState = TARGET_LIMIT_STATE } = {}) {
-  let header = null
-
-  for (let i = 0; i < rows.length; i += 1) {
-    const text = rows[i].cells.join(' ')
-    const match = text.match(HEADER_RE)
-    if (match) {
-      header = match
-      break
-    }
-  }
-
-  if (!header) {
-    return null
-  }
-
-  const span = Number(header[1])
-  const beam = Number(header[2])
-  const state = header[3].trim().toUpperCase()
-
-  if (limitState && state !== limitState.toUpperCase()) {
-    return null
-  }
-
-  // We want each girder's reaction at the near bearing line: the value in the
-  // "Bearing" column at location 0.00 (the first/leftmost station).
-  //
-  // Report layouts differ. Most reports (Final B, the Stage reports) print each
-  // girder on ONE page as a left half: "Bearing" is the first column and the
-  // stations run 0.00 -> Midspan. Some reports ("Final Stage A") print each
-  // girder across TWO pages: a left half AND a mirrored right half, where
-  // "Bearing" is the LAST column and the stations run Midspan -> far support.
-  // The right-half page is the SAME girder as the preceding left-half page (its
-  // rows are that page reversed), so treating it as its own beam double-counts
-  // girders (Beam 2 == Beam 1, Beam 4 == Beam 3, ...). It also has no
-  // location-0.00 column, so it carries no near-line reaction. We therefore read
-  // reactions from left-half pages only and skip right-half pages; the far-side
-  // bearing line is recovered by the "both sides of cap" option in the UI.
-  //
-  // The caption row can render at the top or bottom of the page, so scan the
-  // whole page for the "Bearing ... Midspan" station row to decide the half.
-  let bearingSide = null
-  for (let i = 0; i < rows.length; i += 1) {
-    const cells = rows[i].cells
-    const idx = cells.indexOf('Bearing')
-    if (idx !== -1) {
-      bearingSide = idx === cells.length - 1 && idx !== 0 ? 'right' : 'left'
-      break
-    }
-  }
-
-  if (bearingSide === null) {
-    return null
-  }
-
-  // Mirrored right-half page: it duplicates the girder on the preceding
-  // left-half page, so skip it to keep each girder counted once.
-  if (bearingSide === 'right') {
-    return null
-  }
-
-  // Find the "Location, ft" row; data rows follow it in top-to-bottom order.
-  let locationIndex = -1
-  for (let i = 0; i < rows.length; i += 1) {
-    if (/^Location,?$/i.test(rows[i].cells[0] ?? '')) {
-      locationIndex = i
-      break
-    }
-  }
-
-  if (locationIndex === -1) {
-    return null
-  }
-
-  const loads = []
-  let pendingLabel = ''
-
-  for (let i = locationIndex + 1; i < rows.length; i += 1) {
-    const cells = rows[i].cells
-    if (cells.length === 0) {
-      continue
-    }
-
-    // Locate the component marker (M / V / M+ / ...) inside the row.
-    let markerIndex = -1
-    for (let j = 0; j < cells.length; j += 1) {
-      if (ROW_MARKERS.has(cells[j])) {
-        markerIndex = j
-        break
-      }
-    }
-
-    if (markerIndex === -1) {
-      continue
-    }
-
-    const marker = cells[markerIndex]
-    const label = cleanLabel(cells.slice(0, markerIndex))
-
-    // Stop once we reach live load / total rows.
-    if (STOP_MARKERS.has(marker) || /^(LL|Total)\b/i.test(label)) {
-      break
-    }
-
-    const values = cells.slice(markerIndex + 1).filter(isNumeric)
-
-    if (marker === 'M') {
-      pendingLabel = label
-      continue
-    }
-
-    if (marker === 'V') {
-      const fullLabel = `${pendingLabel} ${label}`.replace(/\s+/g, ' ').trim()
-      if (fullLabel && values.length > 0) {
-        // Left-half page: the bearing reaction is the first (location 0.00) value.
-        loads.push({ label: fullLabel, bearing: Number(values[0]) })
-      }
-      pendingLabel = ''
-    }
-  }
-
-  if (loads.length === 0) {
-    return null
-  }
-
-  return { span, beam, state, loads }
-}
-
 // Convert pdf.js text items to { x, y, str }. pdf.js gives a transform matrix
 // where [4] is x and [5] is y (origin bottom-left, so larger y is higher up).
 // We negate y so that visual top-to-bottom ordering matches ascending values.
@@ -228,18 +98,148 @@ export function textItemsToWords(items) {
   return words
 }
 
-// High-level: given an array of pages, each an array of pdf.js text items,
+function isLocationRow(row) {
+  return /^Location,?$/i.test(row.cells[0] ?? '')
+}
+
+// The first numeric cell of a "Location, ft ..." row is the leftmost station.
+// A near-bearing (left-half) table starts at 0.00; a mirrored right-half table
+// starts partway along the span (e.g. 47.00).
+function firstLocationValue(row) {
+  for (const cell of row.cells) {
+    if (isNumeric(cell)) {
+      return Number(cell)
+    }
+  }
+  return null
+}
+
+// Read one dead-load table (the near-bearing / left-half table) starting at the
+// row after its "Location," row. The bearing reaction is the first (location
+// 0.00) value of each shear (V) row. Stops at the live-load / total rows, the
+// next table's location row, or endIdx.
+function parseLeftTable(rows, locIndex, endIndex, header) {
+  const loads = []
+  let pendingLabel = ''
+
+  for (let i = locIndex + 1; i < endIndex; i += 1) {
+    const cells = rows[i].cells
+    if (cells.length === 0) {
+      continue
+    }
+    // The mirrored right-half table (or the next table) begins with its own
+    // "Location," row — stop before we read into it.
+    if (isLocationRow(rows[i])) {
+      break
+    }
+
+    let markerIndex = -1
+    for (let j = 0; j < cells.length; j += 1) {
+      if (ROW_MARKERS.has(cells[j])) {
+        markerIndex = j
+        break
+      }
+    }
+    if (markerIndex === -1) {
+      continue
+    }
+
+    const marker = cells[markerIndex]
+    const label = cleanLabel(cells.slice(0, markerIndex))
+
+    if (STOP_MARKERS.has(marker) || /^(LL|Total)\b/i.test(label)) {
+      break
+    }
+
+    const values = cells.slice(markerIndex + 1).filter(isNumeric)
+
+    if (marker === 'M') {
+      pendingLabel = label
+      continue
+    }
+
+    if (marker === 'V') {
+      const fullLabel = `${pendingLabel} ${label}`.replace(/\s+/g, ' ').trim()
+      if (fullLabel && values.length > 0) {
+        loads.push({ label: fullLabel, bearing: Number(values[0]) })
+      }
+      pendingLabel = ''
+    }
+  }
+
+  if (loads.length === 0) {
+    return null
+  }
+  return { span: header.span, beam: header.beam, state: header.state, loads }
+}
+
+// High-level: given an array of pages (each an array of pdf.js text items),
 // return all matching envelopes in document order.
-export function parsePagesTextItems(pagesItems, options) {
-  const envelopes = []
+//
+// LEAP paginates the report as one continuous stream: a beam's "SHEAR AND
+// MOMENT ENVELOPE : ... Beam : N" header and its data table are NOT guaranteed
+// to sit on the same page — the header can fall at the bottom of one page while
+// its table is at the top of the next, and a beam's mirrored right-half table
+// can sit on the page between its own header and the previous beam's. So we must
+// flatten every page into one row stream and bind each header to the table that
+// FOLLOWS it, rather than parsing page by page (which mislabels beams).
+export function parsePagesTextItems(pagesItems, options = {}) {
+  const { limitState = TARGET_LIMIT_STATE } = options
+
+  // Flatten all pages, preserving reading order (page order, top-to-bottom).
+  const rows = []
   for (const items of pagesItems) {
-    const words = textItemsToWords(items)
-    const rows = groupWordsIntoRows(words)
-    const envelope = parseEnvelopeRows(rows, options)
+    const pageRows = groupWordsIntoRows(textItemsToWords(items))
+    for (const row of pageRows) {
+      rows.push(row)
+    }
+  }
+
+  // Locate every beam header.
+  const headers = []
+  for (let i = 0; i < rows.length; i += 1) {
+    const match = rows[i].cells.join(' ').match(HEADER_RE)
+    if (match) {
+      headers.push({
+        idx: i,
+        span: Number(match[1]),
+        beam: Number(match[2]),
+        state: match[3].trim().toUpperCase(),
+      })
+    }
+  }
+
+  const envelopes = []
+  for (let k = 0; k < headers.length; k += 1) {
+    const header = headers[k]
+    if (limitState && header.state !== limitState.toUpperCase()) {
+      continue
+    }
+    const endIdx = k + 1 < headers.length ? headers[k + 1].idx : rows.length
+
+    // Find this beam's near-bearing (left-half) table: the first "Location,"
+    // row starting at 0.00 that appears after the header and before the next
+    // header. That table holds the bearing reactions for THIS beam.
+    let locIndex = -1
+    for (let i = header.idx + 1; i < endIdx; i += 1) {
+      if (isLocationRow(rows[i])) {
+        const first = firstLocationValue(rows[i])
+        if (first !== null && Math.abs(first) < 0.5) {
+          locIndex = i
+          break
+        }
+      }
+    }
+    if (locIndex === -1) {
+      continue
+    }
+
+    const envelope = parseLeftTable(rows, locIndex, endIdx, header)
     if (envelope) {
       envelopes.push(envelope)
     }
   }
+
   return envelopes
 }
 
