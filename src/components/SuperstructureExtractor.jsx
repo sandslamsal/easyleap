@@ -9,6 +9,7 @@ import {
   Layers3,
   LoaderCircle,
   Printer,
+  RotateCcw,
   Table2,
   TriangleAlert,
   Trash2,
@@ -137,7 +138,16 @@ function PrintReport({ files, envelopeTable, caseSpans, multiSpan }) {
   )
 }
 
-function ReactionTable({ title, table, subtitle }) {
+function ReactionTable({
+  title,
+  table,
+  subtitle,
+  editable = false,
+  fileId,
+  cellRaw,
+  onEditCell,
+  isEdited,
+}) {
   if (!table || table.beams.length === 0) {
     return null
   }
@@ -164,6 +174,24 @@ function ReactionTable({ title, table, subtitle }) {
                 <td className="reaction-table-label">{label}</td>
                 {table.beams.map((beam) => {
                   const value = table.values.get(`${beam.key}::${label}`)
+                  if (editable) {
+                    return (
+                      <td key={beam.key} className="reaction-cell">
+                        <input
+                          className={`reaction-cell-input${
+                            isEdited(fileId, beam.key, label) ? ' edited' : ''
+                          }`}
+                          type="text"
+                          inputMode="decimal"
+                          aria-label={`${label} for ${beam.label}`}
+                          value={cellRaw(fileId, beam.key, label, value)}
+                          onChange={(event) =>
+                            onEditCell(fileId, beam.key, label, event.target.value)
+                          }
+                        />
+                      </td>
+                    )
+                  }
                   return (
                     <td key={beam.key}>
                       {value === undefined ? '—' : formatValue(value)}
@@ -189,19 +217,45 @@ export function SuperstructureExtractor() {
   const [project, setProject] = useState({ name: '', engineer: '', job: '' })
   const [pageSize, setPageSize] = useState('letter')
   const [includeLogo, setIncludeLogo] = useState(true)
+  // Manual overrides for extracted cells, so a wrong parsed value can be fixed
+  // by hand before exporting: { [fileId]: { `${beamKey}::${label}`: rawString } }
+  const [edits, setEdits] = useState({})
 
   const doneFiles = useMemo(
     () => files.filter((file) => file.status === 'done' && file.result),
     [files],
   )
 
+  // Apply the manual edits on top of the parsed values. Everything downstream
+  // (envelope, load cases, every export and the PDF) reads from these edited
+  // tables, so a correction made in the UI flows through the whole report.
+  const editedDoneFiles = useMemo(() => {
+    return doneFiles.map((file) => {
+      const fileEdits = edits[file.id]
+      if (!fileEdits || Object.keys(fileEdits).length === 0) {
+        return file
+      }
+      const values = new Map(file.result.table.values)
+      for (const [key, raw] of Object.entries(fileEdits)) {
+        const num = Number(raw)
+        if (raw !== '' && Number.isFinite(num)) {
+          values.set(key, num)
+        }
+      }
+      return {
+        ...file,
+        result: { ...file.result, table: { ...file.result.table, values } },
+      }
+    })
+  }, [doneFiles, edits])
+
   const fileTables = useMemo(
     () =>
-      doneFiles.map((file) => ({
+      editedDoneFiles.map((file) => ({
         name: file.name,
         table: file.result.table,
       })),
-    [doneFiles],
+    [editedDoneFiles],
   )
 
   const envelopeTable = useMemo(
@@ -216,11 +270,11 @@ export function SuperstructureExtractor() {
   // reporting "Span 1") never contaminate each other. Span N maps to the
   // bearing line at startLine + (N - 1).
   const caseSpans = useMemo(() => {
-    const tags = [...new Set(doneFiles.map((file) => file.span ?? 1))].sort(
+    const tags = [...new Set(editedDoneFiles.map((file) => file.span ?? 1))].sort(
       (a, b) => a - b,
     )
     return tags.map((tag, index) => {
-      const tables = doneFiles
+      const tables = editedDoneFiles
         .filter((file) => (file.span ?? 1) === tag)
         .map((file) => file.result.table)
       const table = buildEnvelopeTable(tables)
@@ -233,7 +287,7 @@ export function SuperstructureExtractor() {
         totals: cases.totals,
       }
     })
-  }, [doneFiles, startLine])
+  }, [editedDoneFiles, startLine])
 
   const multiSpan = caseSpans.length > 1
 
@@ -257,6 +311,46 @@ export function SuperstructureExtractor() {
 
   const isParsing = files.some((file) => file.status === 'parsing')
   const hasResults = doneFiles.length > 0
+
+  const hasEdits = useMemo(
+    () => Object.values(edits).some((fe) => fe && Object.keys(fe).length > 0),
+    [edits],
+  )
+
+  // The string shown in an editable cell: the override if one exists, else the
+  // parsed value formatted the same way as the read-only tables.
+  const cellRaw = (fileId, beamKey, label, value) => {
+    const fileEdits = edits[fileId]
+    const key = `${beamKey}::${label}`
+    if (fileEdits && key in fileEdits) {
+      return fileEdits[key]
+    }
+    return value === undefined ? '' : formatValue(value)
+  }
+
+  const isEdited = (fileId, beamKey, label) => {
+    const fileEdits = edits[fileId]
+    return Boolean(fileEdits && `${beamKey}::${label}` in fileEdits)
+  }
+
+  const onEditCell = (fileId, beamKey, label, raw) => {
+    setEdits((prev) => {
+      const fileEdits = { ...(prev[fileId] || {}) }
+      const key = `${beamKey}::${label}`
+      if (raw.trim() === '') {
+        delete fileEdits[key]
+      } else {
+        fileEdits[key] = raw
+      }
+      return { ...prev, [fileId]: fileEdits }
+    })
+    setActionMessage('')
+  }
+
+  const resetEdits = () => {
+    setEdits({})
+    setActionMessage('Reverted all manual edits back to the extracted values.')
+  }
 
   const updateFile = (id, patch) => {
     setFiles((current) =>
@@ -406,7 +500,7 @@ export function SuperstructureExtractor() {
         day: 'numeric',
       })
       await generateSuperstructurePdf({
-        files: doneFiles,
+        files: editedDoneFiles,
         envelopeTable,
         caseSpans,
         multiSpan,
@@ -532,24 +626,40 @@ export function SuperstructureExtractor() {
             <div>
               <h3>Bearing Reactions: Shear (V) at Bearing (SERVICE I)</h3>
               <p>
-                Unfactored dead-load shear at the bearing for each beam. Values
-                in kips.
+                Unfactored dead-load shear at the bearing for each beam, in kips.
+                Click any value to edit it — corrections flow into the Max
+                Envelope, the load cases, and every export.
               </p>
             </div>
+            {hasEdits ? (
+              <button
+                type="button"
+                className="button button-secondary reset-edits-btn"
+                onClick={resetEdits}
+              >
+                <RotateCcw size={16} />
+                <span>Reset edits</span>
+              </button>
+            ) : null}
           </div>
 
-          {doneFiles.map((file) => (
+          {editedDoneFiles.map((file) => (
             <ReactionTable
               key={file.id}
               title={baseName(file.name)}
               subtitle={`Span ${file.span ?? 1}`}
               table={file.result.table}
+              editable
+              fileId={file.id}
+              cellRaw={cellRaw}
+              onEditCell={onEditCell}
+              isEdited={isEdited}
             />
           ))}
 
           <ReactionTable
             title="Max Envelope"
-            subtitle={`Governing maximum across ${doneFiles.length} file(s)`}
+            subtitle={`Governing maximum across ${doneFiles.length} file(s) · computed`}
             table={envelopeTable}
           />
         </section>
@@ -783,7 +893,7 @@ export function SuperstructureExtractor() {
 
       {hasResults ? (
         <PrintReport
-          files={doneFiles}
+          files={editedDoneFiles}
           envelopeTable={envelopeTable}
           caseSpans={caseSpans}
           multiSpan={multiSpan}

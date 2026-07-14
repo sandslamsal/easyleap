@@ -1069,6 +1069,49 @@
   background: var(--surface-strong);
 }
 
+/* editable extracted cells */
+.reaction-table td.reaction-cell {
+  padding: 3px 4px;
+}
+
+.reaction-cell-input {
+  width: 100%;
+  min-width: 56px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  padding: 4px 7px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.reaction-cell-input:hover {
+  border-color: #d3dae2;
+}
+
+.reaction-cell-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 2px #e5eefb;
+}
+
+.reaction-cell-input.edited {
+  border-color: #c17d16;
+  background: #fdf3e2;
+  color: #8a5a08;
+  font-weight: 600;
+}
+
+.reset-edits-btn {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
 /* ---------- footer ---------- */
 .site-footer {
   margin-top: 28px;
