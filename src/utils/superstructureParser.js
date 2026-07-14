@@ -108,15 +108,23 @@ export function parseEnvelopeRows(rows, { limitState = TARGET_LIMIT_STATE } = {}
     return null
   }
 
-  // LEAP prints the beam from one support. Odd beams show the left half
-  // (Bearing is the first/leftmost station column) while even beams show the
-  // mirrored right half (Bearing is the last/rightmost column). We must read
-  // the value under the "Bearing" column, not blindly the first column.
+  // We want each girder's reaction at the near bearing line: the value in the
+  // "Bearing" column at location 0.00 (the first/leftmost station).
   //
-  // On the mirrored pages the title caption is rendered at the bottom of the
-  // page while the data table sits at the top, so the header row is NOT a
-  // reliable anchor for the table. We search the whole page for the station
-  // label row ("Bearing ... Midspan") and the "Location, ft" row instead.
+  // Report layouts differ. Most reports (Final B, the Stage reports) print each
+  // girder on ONE page as a left half: "Bearing" is the first column and the
+  // stations run 0.00 -> Midspan. Some reports ("Final Stage A") print each
+  // girder across TWO pages: a left half AND a mirrored right half, where
+  // "Bearing" is the LAST column and the stations run Midspan -> far support.
+  // The right-half page is the SAME girder as the preceding left-half page (its
+  // rows are that page reversed), so treating it as its own beam double-counts
+  // girders (Beam 2 == Beam 1, Beam 4 == Beam 3, ...). It also has no
+  // location-0.00 column, so it carries no near-line reaction. We therefore read
+  // reactions from left-half pages only and skip right-half pages; the far-side
+  // bearing line is recovered by the "both sides of cap" option in the UI.
+  //
+  // The caption row can render at the top or bottom of the page, so scan the
+  // whole page for the "Bearing ... Midspan" station row to decide the half.
   let bearingSide = null
   for (let i = 0; i < rows.length; i += 1) {
     const cells = rows[i].cells
@@ -128,6 +136,12 @@ export function parseEnvelopeRows(rows, { limitState = TARGET_LIMIT_STATE } = {}
   }
 
   if (bearingSide === null) {
+    return null
+  }
+
+  // Mirrored right-half page: it duplicates the girder on the preceding
+  // left-half page, so skip it to keep each girder counted once.
+  if (bearingSide === 'right') {
     return null
   }
 
@@ -184,8 +198,8 @@ export function parseEnvelopeRows(rows, { limitState = TARGET_LIMIT_STATE } = {}
     if (marker === 'V') {
       const fullLabel = `${pendingLabel} ${label}`.replace(/\s+/g, ' ').trim()
       if (fullLabel && values.length > 0) {
-        const raw = bearingSide === 'right' ? values[values.length - 1] : values[0]
-        loads.push({ label: fullLabel, bearing: Number(raw) })
+        // Left-half page: the bearing reaction is the first (location 0.00) value.
+        loads.push({ label: fullLabel, bearing: Number(values[0]) })
       }
       pendingLabel = ''
     }
